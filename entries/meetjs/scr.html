@@ -1,0 +1,104 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <link href='http://fonts.googleapis.com/css?family=Share+Tech' rel='stylesheet' type='text/css'>
+        <style>
+            
+            body {padding: 10px; background: transparent; font: 32px 'Share Tech', sans-serif; overflow: hidden;}
+            header article {background: #000; margin-bottom: 10px; color: #fff}
+            header article * {color: #fff}
+            article article { background: #eee;margin-bottom: 10px;  }
+            article:after {clear: both; float: none; content: ""; display: block; }
+            nick, test, bytes, score {color: #000; padding: 5px; }
+            nick {float: left;}
+            test, bytes, score {float: right; width: 100px;  text-align: center}
+            section bytes, section test, section bytes, section score {color: #fff}
+            section bytes { background: #408;}
+            section test { background: #404;}
+            section score { background: #804;}
+            
+            article[id] { -webkit-perspective: 200 }
+            .score.ready:first-child * { background: #fff; color: #000; }
+            .score {-webkit-transform: scale(10) rotateX(-180deg) translateZ(-1200px); -webkit-transition: all 1s ease; opacity: 0 }
+            .score.ready {-webkit-transform: scale(1) rotateX(0) translateZ(0); opacity: 1 }
+            .score.away {
+                -webkit-transform: rotateX(90deg) translateZ(-1400px) 
+            }
+            #result {background: #fff;}
+            section {position: relative; width: 100%;  }
+            #oldscores, #scoreboard {position: absolute; top: 0; left: 0; width: 100%; }
+            
+            h1 { color: #fff; background: #000; padding: 5px; text-align: center; font-size: 36px; }
+            
+            #code {background: #fff; font-size: 24px; word-wrap: break-word; font-family: "Consolas", terminal, sans-serif; padding: 20px; }
+        </style>
+        
+    </head>
+    <body>
+        <h1>COMPO WINNER</h1>
+
+        <section>
+            <article id="resHead" class="score" >
+            <!--<nick></nick>-->
+                <test>Tests</test>
+                <bytes>Bytes</bytes>
+                <score>Score</score>
+            </article>
+            <article id="result" class="score" >
+                <nick id="nick">Nick</nick>
+                <test id="test">Test</test>
+                <bytes id="bytes">Bytes</bytes>
+                <score id="score">Score</score>
+            </article>
+            <pre id="code" class="score">
+            
+            
+            </pre>
+        </section>
+    </body>
+    
+    <script>
+            var resultShow = function(winner) {
+            
+                if (!winner.length) {
+                    getWinner();
+                    return;
+                }
+                
+                winner = winner[0];
+            
+                var res = document.getElementById('result');
+                var resH = document.getElementById('resHead');
+                var eNick = document.getElementById('nick');
+                var eTest = document.getElementById('test');
+                var eBytes = document.getElementById('bytes');
+                var eScore = document.getElementById('score');
+                var eCode = document.getElementById('code');
+                
+                eNick.innerHTML = winner.data.nick;
+                eTest.innerHTML = winner.testScore / 1E3;
+                eBytes.innerHTML = winner.byteLength;
+                eScore.innerHTML = winner.finalScore;
+                eCode.innerHTML = winner.data.code;
+                
+                res.className += " ready";
+                resH.className += " ready";
+                eCode.className += " ready";
+                
+            }            
+
+            var getWinner = function() {
+                var r = new XMLHttpRequest();
+                r.open("GET", "http://kuzkuz.pl:10080/results/10", true);
+                r.onreadystatechange = function () {
+                    if (r.readyState != 4 || r.status != 200) return;
+                    resultShow(JSON.parse(r.responseText));
+                };
+                r.send();
+            }
+            
+            getWinner();
+            
+        </script>
+</html>

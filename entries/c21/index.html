@@ -1,0 +1,376 @@
+<!DOCTYPE HTML>
+<html lang="pl">
+	<head>
+	
+		<script src="js/three.min.js"></script>
+		<style>
+			body {background: #0D0E2B;padding:0; margin: 0; overflow: hidden; color: #fff; font-family: 'Arial'}
+			canvas {width: 100% !important; height: 100% !important; position: absolute; top:0; left:0}
+			#log {position:absolute; top:0; left: 0}
+			#description {position: fixed; bottom:0; left: 0; width:100%; color: #999; padding: 20px; z-index:10}
+			#description a { color: #fff}
+		</style>
+	</head>
+	<body class="h">
+		<p id="description">Music: <a href="https://www.facebook.com/spacetownsavior">Space Town Savior</a>
+			<span> Code: <a href="http://patrykfalba.eu/">Patu</a></span>
+		</p>
+		<span id="log">Loading ... ~6200KB (with msx)</span>
+		
+	</body>
+
+	<script>
+		var s = {
+				data: {			
+					GRID_SIZE: 4,
+					PARTICLE_COUNT_X: 72,
+					PARTICLE_COUNT_Z: 72,
+					SOURCE_CANVAS_WIDTH: 72,
+					SOURCE_CANVAS_HEIGHT: 72,
+					particles_Y_table: [],
+					timer1: 0,
+					timer2: 0,
+					timer3: 0,
+					currentImage: 0,
+					filesToLoad: 2
+				},
+				
+				data2: {
+					images: [
+						{ src: "map1" },
+						{ src: "map2" }
+					]
+				},
+				
+				burst: {
+					geom: {},
+					mat: {},
+					mesh: {}
+				},
+				
+				burst2: {
+					geom: {},
+					mat: {},
+					mesh: {}
+				},
+				
+				init: function() {				
+					window.onerror = function(e, u, l) {
+						document.getElementById('log').innerHTML = e + ',' + l;
+					}
+					s.loadMusic('music/discovery.mp3', s.setScene);
+				},
+			
+				preload: function(callback) {
+					s.data.sourceCanvas = document.createElement('canvas');
+					s.data.sourceCTX = s.data.sourceCanvas.getContext('2d');					
+					s.data.sourceCanvas.width = s.data.SOURCE_CANVAS_WIDTH;
+					s.data.sourceCanvas.height = s.data.SOURCE_CANVAS_HEIGHT;
+					
+					s.data2.images.map(function(a, b) {
+						a.image = new Image();
+						a.image.onload = function() {
+							var x = 0;
+							a.imageAlphaTable = [];
+							s.data.sourceCTX.clearRect(0, 0, s.data.SOURCE_CANVAS_WIDTH, s.data.SOURCE_CANVAS_HEIGHT)
+							s.data.sourceCTX.drawImage(a.image, 0, 0, s.data.SOURCE_CANVAS_WIDTH, s.data.SOURCE_CANVAS_HEIGHT); 
+							a.imageData = s.data.sourceCTX.getImageData(0,0, s.data.SOURCE_CANVAS_WIDTH, s.data.SOURCE_CANVAS_HEIGHT)
+							
+							for (x; x < a.imageData.data.length; x +=4) {
+								a.imageAlphaTable.push(a.imageData.data[x])
+							}
+							
+							s.worker.postMessage({operation: "takeAlpha", alphaData: a.imageAlphaTable});
+							s.data.filesToLoad--;
+							if (!s.data.filesToLoad) callback();
+							
+						}
+						a.image.src = 'imgs/' + a.src + '.png';
+					})
+				
+					s.worker = new Worker('worker.js')
+					s.worker.addEventListener('message', s.workerMessage, false)
+					
+					var d = s.data;
+					s.worker.postMessage({
+						operation: "init", 
+						data: {
+							PARTICLE_COUNT_X: s.data.PARTICLE_COUNT_X,
+							PARTICLE_COUNT_Z: s.data.PARTICLE_COUNT_Z,
+							timer1: 0,
+							timer2: 0,
+							timer3: 0,
+							currentImage: 0
+						}
+					});
+				},
+			
+				setWorkerLoop: function() {
+					s.worker.postMessage({operation: "setCalculator"});
+				},
+			
+				workerMessage: function(e) {
+				//console.log('WORKER SAID: ' + e.data.message, e.data.val );
+					if (e.data.yPositions) s.data.particles_Y_table = e.data.yPositions;
+				},
+			
+				setScene: function() {
+					var k = 0, a = 0;
+					var SCREEN_WIDTH = window.innerWidth, SCREEN_HEIGHT = window.innerHeight;
+					var VIEW_ANGLE = 50, ASPECT = SCREEN_WIDTH / SCREEN_HEIGHT, NEAR = 0.1, FAR = 20000;
+					
+					s.renderer = new THREE.WebGLRenderer(
+						{
+							antialias: false, 
+							alpha: true,
+							precision: "lowp"
+						}
+					);
+					s.renderer.setSize(SCREEN_WIDTH / 2, SCREEN_WIDTH / 2 / ASPECT);
+					s.renderer.shadowMapEnabled = false;
+					//s.renderer.shadowMapType = THREE.PCFShadowMap;
+					
+					document.body.appendChild(s.renderer.domElement);
+					s.renderer.domElement.style.width = "100%";
+					s.renderer.domElement.style.height = "100%";
+					s.camera = new THREE.PerspectiveCamera( VIEW_ANGLE, ASPECT, NEAR, FAR);
+					s.scene = new THREE.Scene();
+					
+					s.scene.add(s.camera);
+					s.scene.fog = new THREE.FogExp2( 0x000033, 0.009 );
+					
+					s.burst.mat = new THREE.MeshLambertMaterial({
+						color: 0xffffff,
+						side: THREE.DoubleSide,
+						emissive: 0xffffff,
+						transparent: true,
+						opacity: 1
+					})
+					
+					s.burst.geom = new THREE.RingGeometry(48, 64, 20, 16, 0)
+					s.burst.mesh = new THREE.Mesh(s.burst.geom, s.burst.mat)
+					s.burst.mesh.rotation.x = Math.PI / 2
+					s.scene.add(s.burst.mesh)
+
+					
+					s.burst.mesh.scale.x = s.burst.mesh.scale.y = s.burst.mesh.scale.z = 0
+					
+					
+
+					var pMaterial = new THREE.ParticleBasicMaterial({
+						  //color: 0xFFFFFF,
+						  size: 6,
+						  map: THREE.ImageUtils.loadTexture(
+							"img/particle.png"
+						  ),
+						  transparent: true,
+						  depthWrite: false
+						});
+						
+						s.particles = new THREE.Geometry();
+
+					for (var z = 0; z < s.data.PARTICLE_COUNT_X; z++) {
+						for (var x = 0; x < s.data.PARTICLE_COUNT_Z; x++) {
+					  
+							var pX = x * s.data.GRID_SIZE - ~~(s.data.PARTICLE_COUNT_X / 2 * s.data.GRID_SIZE),
+								pY = ((Math.sin(z / 4) * -Math.cos(x/ 4)) * 40 + 10) + (x % 2 ? 100: -100),
+								pZ = z * s.data.GRID_SIZE - s.data.PARTICLE_COUNT_Z / 2 * s.data.GRID_SIZE + (x % 2 ? 5 : 0) 
+								particle = new THREE.Vector3(pX, pY, pZ);
+								
+							s.particles.vertices.push(particle);
+
+						}
+					}
+						
+					s.particleSystem = new THREE.ParticleSystem(
+						s.particles, pMaterial
+					);
+
+					s.scene.add(s.particleSystem);
+					s.particleSystem.sortParticles = true;
+					
+					s.scene.add(s.spot = new THREE.SpotLight({color: 0xffffff}));
+					s.scene.add(s.amb = new THREE.AmbientLight(0xffffff));
+					
+					s.spot.position.y = 100;
+					
+					s.preload(s.setWorkerLoop);
+					
+					document.getElementById('log').innerHTML = '';
+					
+					s.styleElem = document.createElement('style');
+					document.head.appendChild(s.styleElem);
+					
+					setInterval(function() {
+						a++;
+						a = a % 360;
+						s.styleElem.innerHTML = 'canvas { -webkit-filter: hue-rotate(' + a + 'deg);}';
+					}, 250)
+					
+					s.render();
+					
+				},
+				
+				animate: function() {
+					var k = 0,
+						iteration = 0,
+						z = 0,
+						x = 0;
+					
+					for (z;z < s.data.PARTICLE_COUNT_X; z++) {
+						for (x = 0;x < s.data.PARTICLE_COUNT_Z; x++) {
+							s.particles.vertices[iteration].y = s.data.particles_Y_table[iteration];
+							iteration++;
+						}
+					}
+					
+					s.data.timer1 += 0.005;
+					s.data.timer2 += 0.05;
+					s.data.timer3 += 0.0015;
+					s.camera.position.y = Math.sin(s.data.timer3 ) * 30 + 130	;
+					//s.camera.rotation.y = s.data.timer1 / 8 
+					s.camera.position.z = Math.sin(s.data.timer3) * 120;
+					s.camera.position.x = Math.cos(s.data.timer3) * 120;
+					s.camera.lookAt({x:0,y:0,z:0});
+					
+					s.camera.fov = 80 + Math.sin(s.data.timer1) * 30 
+					s.camera.updateProjectionMatrix()
+					
+					if (s.data.timer1 > Math.PI * 2 + Math.PI / 2) {
+						s.data.timer1 = Math.PI / 2;
+					}
+					
+					s.burst.mesh.scale.x += 0.02;
+					s.burst.mesh.scale.y += 0.02;
+					s.burst.mesh.scale.z += 0.02;
+					
+						
+					if (!(~~(s.audioPositionMS) % 2000)) {
+						
+						s.data.currentImage++;
+						if (s.data.currentImage > s.data2.images.length - 1) s.data.currentImage = 0;
+						s.worker.postMessage({operation: "imageChange", image: s.data.currentImage})
+						s.burst.mesh.scale.x = s.burst.mesh.scale.y = s.burst.mesh.scale.z = 0
+						
+					
+					}
+					
+				},
+				
+				render: function() {
+					requestAnimationFrame( s.render );
+					
+					if (s.audioPosition > 1) {
+						s.renderer.render( s.scene, s.camera );
+						s.worker.postMessage({
+							operation: "volumeData", 
+							globalVolume: s.volume, 
+							arrayVolume: s.volumeArray, 
+							position: s.audioPosition,
+							positionMS: s.audioPositionMS,
+							positionMSPrev: s.audioPositionMS
+						});
+					}
+					
+					s.animate();
+					//s.worker.postMessage({ particles: s.particles})
+				},
+				
+				loadMusic: function loadMusic(url, callback) {
+                    var request = new XMLHttpRequest();
+                    request.open('GET', url, true);
+                    request.responseType = 'arraybuffer';
+
+					window.AudioContext = window.AudioContext||window.webkitAudioContext;
+                    s.context = new AudioContext();
+
+                    request.onload = function() {
+                        s.context.decodeAudioData(request.response, function(buffer) {
+                            s.music = buffer;
+							s.playMusic(callback);
+                        }, function(e) {console.log(e)});
+                    }
+                    request.send();
+                },
+				
+				playMusic: function(callback) {
+					var source = s.context.createBufferSource();
+					source.buffer = s.music;
+					source.connect(s.context.destination);
+
+					var splitter = s.context.createChannelSplitter();
+
+                    source.connect(splitter);
+
+                    s.analyser = s.context.createAnalyser();
+                    s.analyser.smoothingTimeConstant = 0.3;
+                    s.analyser.fftSize = 1024;
+
+                    splitter.connect(s.analyser,0,0);
+
+					var gainNode = s.context.createGain();
+					source.connect(gainNode);
+					gainNode.connect(s.context.destination);
+
+					gainNode.gain.value = 1;
+
+					s.audioProcess = s.context.createScriptProcessor(2048, 1, 2);
+					s.audioProcess.connect(s.context.destination);
+
+					s.analyser.connect(s.audioProcess);
+
+					function getAverageVolume(array) {
+						var i = values = 0, average, length = array.length;
+
+						for (i = 0; i < length; i++) {
+							values += array[i];
+						}
+
+						average = values / length;
+						return {average: average, array: array};
+					}
+
+					s.audioProcess.onaudioprocess = function() {
+						var array =  new Uint8Array(s.analyser.frequencyBinCount);
+						s.analyser.getByteFrequencyData(array);
+						var vol = getAverageVolume(array)
+
+						s.volume = vol.average;
+						s.volumeArray = vol.array;
+						s.audioPosition = s.audioProcess.context.currentTime;
+						
+						s.audioPositionMS = ~~(s.audioPosition * 1000);
+						if (s.audioPositionMS > s.audioPositionMSPrev + 1000) {
+							s.audioPositionMSPrev = s.audioPositionMS;
+							//console.log('sec ', s.audioPositionMSPrev)
+						}
+						
+					}
+
+					s.audioPositionMSPrev = 0;
+					
+					source.addEventListener('ended', function() {
+						source.start(0);
+					});
+					source.start(0);
+
+					callback();
+				}
+			
+			}
+	</script>
+	
+    <script>
+		s.init();
+	</script>
+	<script>
+	  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	  ga('create', 'UA-19369352-19', 'auto');
+	  ga('send', 'pageview');
+
+	</script>
+</html>

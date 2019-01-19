@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <link rel="stylesheet" href="css/style.css">
+        <meta name="viewport" content="width=device-width">
+        <meta name="description" content="Javascripted Jaguar XJ220 (Amiga game) CD Player">
+        <meta name="author" content="Patu">
+        <title>Jaguar XJ220 - CD Player - Javascripted by Patu</title>
+        <meta property="og:image" content="http://patrykfalba.eu/entries/xj220-cd-player/img/bg_a.png">
+        <meta property="og:title" content="Jaguar XJ220 - CD Player">
+        <meta property="og:url" content="http://patrykfalba.eu/entries/xj220-cd-player/">
+        <meta property="og:description" content="Jaguar XJ220 (Amiga game) CD Player in JavaScript">
+        <meta property="og:type" content="website" />
+        <link rel="canonical" href="http://patrykfalba.eu/entries/xj220-cd-player/">
+        <style>
+        /*! normalize.css v1.0.0 | MIT License | git.io/normalize */
+article,aside,details,figcaption,figure,footer,header,hgroup,nav,section,summary{display:block}audio,canvas,video{display:inline-block;*display:inline;*zoom:1}audio:not([controls]){display:none;height:0}[hidden]{display:none}html{font-size:100%;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%}html,button,input,select,textarea{font-family:sans-serif}body{margin:0}a:focus{outline:thin dotted}a:active,a:hover{outline:0}h1{font-size:2em;margin:.67em 0}h2{font-size:1.5em;margin:.83em 0}h3{font-size:1.17em;margin:1em 0}h4{font-size:1em;margin:1.33em 0}h5{font-size:.83em;margin:1.67em 0}h6{font-size:.75em;margin:2.33em 0}abbr[title]{border-bottom:1px dotted}b,strong{font-weight:bold}blockquote{margin:1em 40px}dfn{font-style:italic}mark{background:#ff0;color:#000}p,pre{margin:1em 0}code,kbd,pre,samp{font-family:monospace,serif;_font-family:'courier new',monospace;font-size:1em}pre{white-space:pre;white-space:pre-wrap;word-wrap:break-word}q{quotes:none}q:before,q:after{content:'';content:none}small{font-size:75%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sup{top:-0.5em}sub{bottom:-0.25em}dl,menu,ol,ul{margin:1em 0}dd{margin:0 0 0 40px}menu,ol,ul{padding:0 0 0 40px}nav ul,nav ol{list-style:none;list-style-image:none}img{border:0;-ms-interpolation-mode:bicubic}svg:not(:root){overflow:hidden}figure{margin:0}form{margin:0}fieldset{border:1px solid #c0c0c0;margin:0 2px;padding:.35em .625em .75em}legend{border:0;padding:0;white-space:normal;*margin-left:-7px}button,input,select,textarea{font-size:100%;margin:0;vertical-align:baseline;*vertical-align:middle}button,input{line-height:normal}button,html input[type="button"],input[type="reset"],input[type="submit"]{-webkit-appearance:button;cursor:pointer;*overflow:visible}button[disabled],input[disabled]{cursor:default}input[type="checkbox"],input[type="radio"]{box-sizing:border-box;padding:0;*height:13px;*width:13px}input[type="search"]{-webkit-appearance:textfield;-moz-box-sizing:content-box;-webkit-box-sizing:content-box;box-sizing:content-box}input[type="search"]::-webkit-search-cancel-button,input[type="search"]::-webkit-search-decoration{-webkit-appearance:none}button::-moz-focus-inner,input::-moz-focus-inner{border:0;padding:0}textarea{overflow:auto;vertical-align:top}table{border-collapse:collapse;border-spacing:0}
+
+* { box-sizing: border-box; }
+
+@font-face {
+    font-family: 'Topaz';
+    src: url('/fonts/topaz-webfont.eot');
+    src: url('/fonts/topaz.eot?#iefix') format('embedded-opentype'),
+         url('/fonts/topaz.woff') format('woff'),
+         url('/fonts/topaz.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+body {
+	background: #000;
+	font-family: 'Topaz', Arial;
+	padding: 5px 15px;
+	cursor: url("img/mouse.png") 13 14, auto;
+}
+
+a { color: #666; }
+a:hover { color: #fff; }
+
+.main {
+	display: block;
+	margin:auto;
+	top: -20px;
+	text-align: center;
+}
+.canvasWrap {
+	margin: auto;
+	position: relative;
+    max-width: 640px;
+}
+
+.canvasWrap:before {
+  content: "";
+  display: block;
+  padding-top: 75%;
+}
+
+canvas {
+	position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+#c3 { opacity: 0 }
+
+.info {
+	text-shadow: 2px 2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, -2px -2px 0 #000, 0 3px 0 #000, 0 -3px 0 #000;
+	width: 100%;
+	height: 100%;
+	display: table-cell;
+	vertical-align: middle;
+	overflow: hidden;
+    color:#fff;
+}
+
+.info p { margin: 4px 0; }
+.info h1 { margin-top: 0; }
+
+.hp .nfo { float: right }
+.hp span { float: left; margin-right: 15px; }
+.hp { color: #666; line-height: 20px; min-height: 22px ;position: relative; z-index: 3;}
+.hp a { text-decoration: none; }
+
+.over {
+    font-size: 18px;
+    line-height: 18px;
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background
+	color: #fff;
+	text-align: center;
+	transition: all 2s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    z-index:2;
+
+}
+.off .over { top: -100%; opacity: 0;}
+
+.overW {
+	display: table;
+	height: 100%;
+	width: 100%;
+	position: relative;
+}
+
+.overW:before {
+	content: "";
+	background: url('img/xj.png') 50% 50% no-repeat #000;
+	display: block;
+	opacity: 1;
+	width: 100%;
+	height: 130%;
+	position: absolute;
+	top: -15%;
+	left: 0;
+	z-index: -1
+}
+
+.fb_iframe_widget {width: 107px}
+
+.bottom {position: fixed; bottom: 0; left: 0; color: red; padding: 5px; text-align: center; width: 100%;}
+.bottom a, a.top {display: none}
+
+@media screen and (max-width: 480px) {
+	.bottom a { display: block; line-height: 24px; text-decoration: none;}
+	.over { background: rgba(20, 20, 20, 0.9); }
+}
+
+@media screen and (min-width: 480px) {
+	a.top { display: inline; }
+}
+
+body.exiting {
+	-webkit-animation: exit 1s steps(8) forwards;
+	-moz-animation: exit 1s steps(8) forwards;
+	animation: exit 1s steps(8) forwards;
+}
+
+@keyframes exit {
+	0% { opacity: 1; }
+	100% { opacity: 0; }
+}
+
+@-moz-keyframes exit {
+	0% { opacity: 1; }
+	100% { opacity: 0; }
+}
+
+@-webkit-keyframes exit {
+	0% { opacity: 1; }
+	100% { opacity: 0; }
+}
+
+#debug { display: block; padding: 10px; border: 8px solid red; }
+#debug:empty { display: none }
+
+        </style>
+    </head>
+    <body>
+        <div id="fb-root"></div>
+        <p class="hp">
+            <span><a class="top" href="/">Back to list</a></span>
+            <span><a href="https://twitter.com/share" class="twitter-share-button" data-url="http://patrykfalba.eu/entries/xj220-cd-player/" data-via="patuwwy" data-hashtags="jaguar, xj220, amiga">Tweet</a></span>
+            <span><span class="fb-share-button" data-href="http://patrykfalba.eu/entries/xj220-cd-player/" data-layout="button_count"></span></span>
+            <a class="top nfo" href="#">Info</a>
+        </p>
+        <div class="main">
+            <div class="canvasWrap">
+                <canvas id="c1"></canvas>
+                <canvas id="c3"></canvas>
+            </div>
+        </div>
+        <div class="over">
+            <div class="overW">
+                <div class="info">
+                    <h1>Jaguar XJ220 - CD Player</h1>
+                    <br/>
+                    <p>Javasripted by Patu <a href="http://patrykfalba.eu/">patrykfalba.eu</a>
+                        <a target="_blank" href="http://twitter.com/patuwwy">
+                            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAATCAYAAACKsM07AAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAALEgAACxIB0t1+/AAAABx0RVh0U29mdHdhcmUAQWRvYmUgRmlyZXdvcmtzIENTNui8sowAAAGcSURBVDiNrZOxS5RhHMc/youEBw5icITi4ZEEEQXWIC2iS7a4CS7NNRlhRVARDS5O/QMNDQ5Gc4sggkaEDY4OCg0tJmiDdhDdp+F9n+64u+fu9egLz/A8v9/z/X3f7/d9UOlyTanr6jd1VS031IfUJGwuqbfPQf5cPbSGqrqvLqg31DfqfZVw4UHWNJOTvBM+q+Pq1V5SlIAeYB14SBwXgZdt6gC/gX7gFfArqFpqULClTrdQfzeHek2zKdRbVI40flWfqZPqoDpnamUnDAdRYUCf+kittLl0ahpspwFVdTQMSDLfXgA3gWOgGPG2P1udcAL8CJsQ8ifgThvy82APOGsc8BHY+A/kgasGa39IQX2r/swZZMz/sTrOf18AcEpq1TZQ7VL9GnBQf5A0NAwDs12SV4DHTac2P6blLu2514Kr5QDUkvpUPcpJ/jrC02RRQBGYAAZyWPMEWIkVE+AyMAVcIc1gAijnIN4FFoHNdk0JaeoXgGvALWAk0vuH9IV+Ad4BH3KIaMqgV51X36vfM3/P1J0s/Osxr2PrL5YjYArBipw6AAAAAElFTkSuQmCC"/>
+                        </a>
+                    </p>
+                    <p>JS Mod Player: <a href="http://mod.haxor.fi/">firehawk/tda</a></p>
+                    <br/>
+                    <p>Original Music: Martin Iveson</p>
+                    <p>Core Design (c) 1992</p>
+                    <br/>
+                    <p>Not working? Try in Chrome or Firefox</p>
+                    <p>TIP: Select MODE first ;) </p>
+                </div>
+            </div>
+        </div>
+        <div class="bottom">
+            <a class="" href="/">Back to list</a>
+            <a class="nfo" href="#">info</a>
+            <span id="debug"></span>
+        </div>
+        <script src="js/pt.js?a" type="text/javascript"></script>
+        <script src="js/main.js?a" type="text/javascript"></script>
+    </body>
+</html>

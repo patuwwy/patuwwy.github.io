@@ -1,0 +1,44 @@
+<!doctype html>
+<html>
+    <body>
+        <style>
+            canvas, body {
+                height: 100%;
+                width: 100%;
+                margin: 0;
+                position: absolute;
+                background: #000;
+            }
+            #main {
+                image-rendering: optimizeSpeed;
+                image-rendering: -moz-crisp-edges;
+                image-rendering: -webkit-optimize-contrast;
+                image-rendering: optimize-contrast;
+                image-rendering: crisp-edges;
+                image-rendering: pixelated;
+                -ms-interpolation-mode: nearest-neighbor;
+            }
+            #canvas-volume {
+                opacity: 0;
+            }
+            #log {
+                z-index:10;
+                position: fixed;
+                top:0;
+                left:0;
+                color: #888;
+                background: #222;
+                padding:3px;
+                font-size: 10px;
+                font-family: monospace;
+            }
+            #log span {color: #3f3}
+        </style>
+        <canvas id="main"></canvas>
+        <canvas id="canvas-volume"></canvas>
+        <!--<div id="log"></div>-->
+        <script src="webgl-utils.js"></script>
+        <script src="timeline.js"></script>
+        <script src="main.js"></script>
+    </body>
+</html>

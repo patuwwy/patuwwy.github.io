@@ -1,0 +1,19 @@
+Archive created by -=MIRSOFT=-
+Look for game MODs at http://go.to/gamemods
+
+*** Archive info ***
+Archiver: UnExoticA
+Type: Game rip
+Format: MOD
+Original Composer: Patrick Phelan
+Tracker: Patrick Phelan
+Num of tunes: 23
+Complete: 100%
+
+*** Game info ***
+Name: Lotus 3
+Platform: Amiga
+Year: 1992
+Genre: Cars
+Publisher: Gremlin Graphics
+Developer: Magnetic Fields

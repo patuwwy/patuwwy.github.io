@@ -1,0 +1,41 @@
+"use strict";
+
+
+var
+    time,
+    uniform,
+
+    Timeline = {
+        "6.00": {
+            Uniforms: {
+                currentScene: 2
+            }
+        }
+    };
+
+function TimelineManager() {
+    for (time in Timeline) {
+
+        var timeFloat = parseInt(time, 10);
+
+
+        if (Audio.time > timeFloat) {
+
+            if (!Timeline[time].fired) {
+                Timeline[time].fired = true;
+                console.log(Timeline[time]);
+
+                for (uniform in Timeline[time].Uniforms) {
+                    Uniforms[uniform] = time.Uniforms[uniform];
+                    console.uniform;
+                }
+            } else {
+                continue;
+
+            }
+        }
+
+
+
+    }
+}

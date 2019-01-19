@@ -1,0 +1,428 @@
+<!doctype html>
+<html>
+    <head><meta charset="UTF-8">
+		<link href='https://fonts.googleapis.com/css?family=Press+Start+2P&subset=latin,latin-ext' rel='stylesheet' type='text/css'>
+		<style>
+			html, body {overflow: hidden; padding:0; margin:0; background: #fff; font-family: "Press Start 2P", Arial}
+			html, body, #bg {height: 100%; }
+			#dev {position:fixed; top: 10px; left: 10px;color: #000;z-index:99}
+			#id {position:fixed; top: 10px; right: 10px;color: #000;z-index:99}
+			#res {position: fixed; bottom: 10px; right: 10px;  display: none}
+			#allWrap canvas { margin: auto; position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+			body.beat {background: #404; -webkit-transition: all 1s ease}
+			body.invert {-webkit-filter: invert(1); background: #000}
+
+            #frame {display: none; width: 100%; height: 100%; top: 0; left: 0; position: absolute; z-index: 3; border: none; background: transparent}
+			#dev {display: none}
+
+			#progress {color: #fff; font-size: 50px; position: fixed; left: 10%; width: 10px; top: 50%; height: 50px; margin-top: -5%; background: #406; z-index: 4; -webkit-transition: all 1s ease; -moz-transition: all 1s ease;}
+			#progress.hidden {opacity: 0; width: 100%; }
+        </style>
+
+		<script src="three.min.js"></script>
+        <script src="pt.js"></script>
+    </head>
+	<body>
+		<div id="dev">
+			<div id="pattern">?</div>
+			<div id="position">?</div>
+			<div id="vol">?</div>
+		</div>
+		<div id="id"></div>
+		<div id="bg">
+			<div id="loader"></div>
+			<div id="allWrap"></div>
+		</div>
+		<div id="res">
+			<canvas id="c1"></canvas>
+		</div>
+		<div id="progress">LOADING...</div>
+        <iframe id="frame" src=""></iframe>
+
+	<script>
+    var s = {
+		data: {
+			BAR_COUNT: 512,
+            IFRAME_SCORES_SRC: 'res.html',//'http://kuzkuz.pl:10080/meetjs/anim/res.html',
+            IFRAME_WINNER_SRC: 'scr.html',//'http://kuzkuz.pl:10080/meetjs/anim/scr.html',
+            IFRAME_LINK_SRC: 'compolink.html',//'http://kuzkuz.pl:10080/meetjs/anim/compolink.html',
+			dom_allWrap: document.getElementById('allWrap'),
+			c1: document.getElementById('c1'),
+            frame: document.getElementById('frame'),
+            progress: document.getElementById('progress'),
+            help: document.getElementById('help'),
+			ctx1: {},
+			r: 0,
+			r1: 0,
+			r2: 0,
+			r3: 0,
+			blocks: [],
+			prevVol: [],
+			previousModulePosition: 0,
+			shake: 1,
+			fakeCrash: true,
+			images: [
+				{ src: 'blank.fw.png' },
+				{ src: '1.fw.png' },
+				{ src: '4.fw.png' },
+				{ src: '3.fw.png' },
+				{ src: '2.fw.png' },
+				{ src: '2.fw.png',
+					ds: true,
+					f: function() {
+						if (!s.data.fakeCrash) return;
+						s.data.stopRender = true;
+						s.data.ctx1.clearRect(0,0, 1280,960);
+						s.data.textLayerTexture.needsUpdate = true;
+						s.module.position = 33;
+						s.module.row = 0;
+						s.data.shake = 0;
+						var t = 20;
+							s.brokenLoop = setInterval(function() {
+
+								s.module.position = 45;
+								s.module.row = 16;
+								s.onBeat();
+								t--;
+
+								if (!t) {
+									s.module.position = 38;
+									s.module.row = 0;
+									clearInterval(s.brokenLoop);
+									s.data.stopRender = false;
+								}
+
+							}, 300)
+					}
+				},
+				{ src: 'Windows_98_BSOD2.png',
+					ds: true,
+					f: function() {
+						if (!s.data.fakeCrash) return;
+						s.data.stopRender = true;
+						s.data.ctx1.drawImage(s.data.images[s.data.currentImage].i, 0.5, -100, 1280, 960);
+						s.data.textLayerTexture.needsUpdate = true;
+						s.data.shake = 0;
+						var t = 30;
+							s.brokenLoop = setInterval(function() {
+
+								s.module.position = 45;
+								s.module.row = 4;
+								t--;
+
+								if (t == 10) {
+									s.data.ctx1.fillStyle = "#000";
+									s.data.ctx1.fillRect(0,0, 1280,960);
+									s.data.textLayerTexture.needsUpdate = true;
+									s.module.pause();
+								};
+
+								if (!t) {
+									s.data.fakeCrash = s.data.stopRender = false;
+									setTimeout(function() {
+										s.module.position = 36;
+										s.module.row = 0;
+										s.module.play();
+										clearInterval(s.brokenLoop);
+									}, 100);
+								}
+
+							}, 250);
+					}
+				},
+				{ src: 's0.fw.png', f: function() { s.data.shake = 1; } }, // 5speeches
+				{ src: 's4.fw.png' },
+				{ src: 's2.fw.png' },
+				{ src: 's1.fw.png' },
+				{ src: 's3.fw.png' },
+				{ src: 's5.fw.png' },
+				{ src: 'blank.fw.png' },
+				{ src: 'c.fw.png', f: function() { s.data.shake = 3; } },
+				{ src: 'blank.fw.png' },
+				{ src: '1.fw.png', f: function() { s.data.shake = 1; } },
+
+
+			],
+			ready: false,
+			currentImage: 0,
+			imagesLoaded: 0,
+			MODULE_START_POSITION: 12
+		},
+        patt: document.getElementById('pattern'),
+        pos: document.getElementById('position'),
+        vol: document.getElementById('vol'),
+        module: {},
+        proTrackerMusic: {
+            init: function() {
+                s.module = new Protracker();
+                s.module.setautostart(false);
+                s.module.load('dropthepanic.mod');
+                s.module.onReady = function () {
+                    s.module.repeat = true;
+					s.data.imagesLoaded++;
+					s.progressUpdate();
+                    s.main();
+                };
+            },
+            monit: function() {
+                setInterval(function() {
+                    s.patt.innerHTML = s.module.row;
+                    s.pos.innerHTML = s.module.position;
+					s.vol.innerHTML = [
+						s.module.channel[0].volume,
+						s.module.channel[1].volume,
+						s.module.channel[2].volume,
+						s.module.channel[3].volume
+					].join(', ')
+                }, 40);
+            }
+        },
+
+		onResize: function() {
+			s.renderer.domElement.style.width = window.innerWidth;
+			s.renderer.domElement.style.height = ~~(window.innerWidth / 16 * 9);
+			s.renderer.domElement.style.top = (window.innerHeight - Number(~~(window.innerWidth / 16 * 9))) / 2;
+		},
+
+		progressUpdate: function() {
+			s.data.progress.style.width = s.data.imagesLoaded / (s.data.images.length + 1) * 80 + '%';
+			console.log(s.data.progress.style.width)
+		},
+
+		main: function() {
+			s.renderer = new THREE.WebGLRenderer({antialias: true, });
+			s.renderer.setSize(800, 600);
+			s.renderer.shadowMapEnabled = true;
+			s.renderer.shadowMapType = THREE.PCFShadowMap;
+			s.data.dom_allWrap.appendChild(s.renderer.domElement);
+
+			s.data.ctx1 = s.data.c1.getContext('2d');
+			s.data.c1.width = 1280;
+			s.data.c1.height = 960;
+
+			s.camera = new THREE.PerspectiveCamera(40, 16 / 9, 0.1, 10000);
+
+			s.scene = new THREE.Scene();
+			s.scene.add(s.camera);
+
+			s.onResize();
+			window.onresize = s.onResize;
+
+			s.data.images.map(function(a) {
+				a.i = new Image();
+				a.i.onload = function() {
+					s.data.imagesLoaded++;
+					s.progressUpdate();
+					s.data.ready = s.data.imagesLoaded == (s.data.images.length + 1);
+					if (s.data.ready) s.go();
+				};
+				a.i.src = 'imgs/' + a.src;
+			})
+
+			s.camera.position.z = 300;
+			s.camera.position.y = 500;
+			s.camera.lookAt({x: 0,y: 10,z: 0})
+
+		},
+
+		go: function() {
+			s.setScene();
+
+			s.module.play();
+			s.module.bpm = 110;
+			s.module.position = s.data.MODULE_START_POSITION;
+			s.proTrackerMusic.monit();
+
+			setInterval(s.onBeat, 1000 / s.module.bpm * 16)
+			s.render();
+			s.data.progress.className = 'hidden';
+		},
+
+		setScene: function() {
+
+			var ambientLight = new THREE.AmbientLight(0x111111),
+				x = 0,
+				r = 0,
+				obj = {};
+
+			s.container = new THREE.Object3D();
+
+			s.spotLight = new THREE.SpotLight( 0xffffff, 1);
+			s.spotLight.position.set( 550, 550, 650 );
+
+			s.container.add(s.spotLight);
+
+			s.sphere = new THREE.Mesh(
+				new THREE.SphereGeometry(220, 24, 24),
+				new THREE.MeshLambertMaterial({
+					color: 0x000
+				})
+			);
+
+			s.data.textLayerTexture =  new THREE.Texture(s.data.c1);
+			s.data.textLayerTexture.needsUpdate = true;
+
+			s.data.textLayerMaterial = new THREE.MeshLambertMaterial({
+					color: 0xffffff,
+					map: s.data.textLayerTexture,
+					blending: THREE.AlphaBlending,
+					transparent: true,
+					emissive: 0xffffff,
+					depthTest: false,
+					depthWrite: false
+			})
+
+			s.data.textLayer = new THREE.Mesh(new THREE.PlaneGeometry(620, 480), s.data.textLayerMaterial );
+			s.data.textLayer.overdraw = true;
+
+			s.camera.add(s.data.textLayer);
+			s.data.textLayer.position.z = -470;
+
+			s.sphere.overdraw = true;
+			s.container.add(s.sphere);
+
+			for (x = 0; x <= s.data.BAR_COUNT; x++) {
+				r = Math.random() * 10
+				obj = {
+					b: new THREE.Mesh(
+						new THREE.CubeGeometry(32 + r, 32 + r, 500 + Math.abs(Math.sin(x / 4) * 200) - r),
+						new THREE.MeshLambertMaterial({
+							opacity: 0.60,
+							transparent: true,
+							overdraw: true,
+							side: THREE.DoubleSide
+						})
+					)
+				}
+
+				obj.b.material.color.setRGB(Math.abs(x / (Math.sin(x) * 2048)), 0, Math.abs(Math.sin(x / 512)));
+				obj.b.rotation.y = x / 256 * Math.PI + Math.sin(x /32 * Math.PI * 2);
+				obj.b.rotation.x = Math.sin(x / 1024) * Math.PI + Math.cos(x / 32 * Math.PI * 2);
+
+				s.container.add(obj.b);
+				s.data.blocks.push(obj);
+
+				s.scene.add(s.container);
+			}
+
+
+
+			s.spotLight2 = new THREE.SpotLight( 0xffffff, 1);
+			s.camera.add(s.spotLight2);
+			s.spotLight2.position.set( 0,0,0 );
+
+		},
+
+		onBeat: function() {
+			var x, y;
+			if ((s.module.row <= 4 || (s.module.row >= 32 && s.module.row < 36)) && !s.cameraJump) {
+				x = Math.random(),
+				y = Math.random();
+
+				s.camera.position.x = x * 400 - 200;
+				s.sphere.scale.z = 1;
+				s.container.rotation.z = s.container.rotation.x = - s.container.rotation.y;
+
+				s.spotLight.position.x = y * 400 - 200;
+				s.spotLight.position.z = y * 400 + 200;
+				s.camera.lookAt({x:  Math.random() * 100 ,y: Math.random() * 100 ,z: Math.random() * 100});
+				s.cameraJump = true;
+				setTimeout(function() {s.cameraJump = false} , 2500);
+
+			}
+
+			if (!s.controlled && (s.data.previousModulePosition !== s.module.position) && !(s.module.position % 2) && (s.module.position >= s.data.MODULE_START_POSITION)) {
+				s.onBeatImages();
+				s.data.currentImage++;
+				if (s.data.currentImage > s.data.images.length - 1) s.data.currentImage = 0;
+
+			}
+
+			s.data.previousModulePosition = s.module.position;
+
+		},
+
+		onBeatImages: function(imgIndex) {
+			var i = typeof(imgIndex) == "number" ? imgIndex : s.data.currentImage;
+
+			s.data.c1.width = s.data.c1.width;
+
+			console.log(i)
+
+			if (!s.data.images[i].ds) {
+				s.data.ctx1.drawImage(s.data.images[i].i, 0.5, 0, 1280, 960);
+				s.data.textLayerTexture.needsUpdate = true;
+			}
+
+			if (s.data.images[i].f) {
+				s.data.images[i].f();
+			}
+
+			document.body.className += ' invert';
+			setTimeout(function() { document.body.className = document.body.className.replace(' invert', '')}, 100);
+
+			s.data.currentImage = i;
+
+		},
+
+		channel: 1,
+		render: function() {
+			var x = 0;
+
+			if (s.module.position == s.data.MODULE_START_POSITION && !s.module.row) {
+				setTimeout(s.render, 200);
+				return;
+			}
+
+
+			s.data.textLayer.position.y = Math.random() * s.data.shake - 50;
+			s.data.textLayer.position.x = Math.random() * s.data.shake;
+
+			s.data.r = (0.0003 * (63 - s.module.row) * s.module.channel[0].volume / 128) * (s.module.channel[0].volume > 31 ? 1 : -1) + s.data.r;
+
+			if (s.module.channel[s.channel].volume > s.data.prevVol[s.channel] + 2) {
+				for (x; x < s.data.BAR_COUNT; x++) {
+					s.data.blocks[x].b.scale.z = 1 + ((s.module.channel[s.channel].volume / 256) * Math.sin(x / 512) * 4) / 8 + Math.random() / 16 }
+			} else {
+				for (x; x < s.data.BAR_COUNT; x++) {
+					s.data.blocks[x].b.scale.z = Math.max(1, s.data.blocks[x].b.scale.z - .002);
+				}
+			}
+
+			if (s.data.stopRender) {
+				s.data.r = ~~(s.module.row / 4);
+			}
+
+			s.spotLight.intensity = 2;
+
+			s.sphere.scale.z = s.sphere.scale.x = s.sphere.scale.y = Math.max(0.3, s.sphere.scale.z - 0.001);
+
+			s.container.rotation.x = s.data.r;
+			s.container.rotation.y = s.data.r / 2;
+			s.container.rotation.z = Math.sin(s.data.r / 2) * Math.PI;
+
+			s.module.channel.map(function(a, b) {
+				s.data.prevVol[b] = a.volume;
+			});
+
+			s.sphere.material.color = new THREE.Color().setRGB(
+				Math.abs(Math.sin(s.module.channel[1].volume / 64 / Math.PI)),
+				Math.abs(Math.cos(s.module.channel[1].volume / 64/ Math.PI)),
+				Math.abs(Math.cos(s.module.channel[1].volume / 64/ Math.PI))
+			);
+
+			s.renderer.render(s.scene, s.camera);
+			requestAnimationFrame(s.render);
+
+		}
+
+    }
+
+    s.proTrackerMusic.init();
+
+    </script>
+
+
+</body>
+</html>
+

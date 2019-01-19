@@ -1,0 +1,465 @@
+﻿<!DOCTYPE HTML>
+<html lang="pl">
+    <head>
+        <meta charset="UTF-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+		<script src="pt.js"></script>
+		<title>
+			Javascript - Prestige Cracktro - Mortal Kombat 2 by Patu
+		</title>
+		
+        <style>
+        @font-face {
+            font-family: 'bitx';
+            src: url('prstartk.eot');
+            src: url('prstartk.eot?#iefix') format('embedded-opentype'),
+                 url('prstartk.woff') format('woff'),
+                 url('prstartk.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
+        
+        body {margin:0;padding:0;background: rgb(38, 15, 10);overflow:hidden; font: 12px/14px "bitx", sans-serif; }
+        
+        #Canvas2 {display: block; margin: auto}
+        #Canvas3, #Canvas4 {display: none}
+        
+		#bar {height: 32px; position: absolute; left: 15%; top: 50%; width: 13%; -webkit-transition: all 0.1s ease; background: rgb(68, 35, 30); color: #aaa; line-height: 32px; text-indent: 16px; margin-top:-16px;}
+        canvas {image-rendering: optimizeSpeed; image-rendering: -moz-crisp-edges; image-rendering: -webkit-optimize-contrast;  image-rendering: optimize-contrast; -ms-interpolation-mode: nearest-neighbor; }
+        
+        html,body{height: 100%;}
+       
+        </style>
+    </head>
+    <body>
+        <div id="page">
+            <div id="bar">Loading...</div>
+			
+            <canvas id="Canvas2"></canvas>
+            <canvas id="Canvas3"></canvas>
+            
+        </div>
+    </body>
+    <script>
+	
+	
+
+    window.requestAnimFrame = (function(){
+        return window.requestAnimationFrame ||
+            window.webkitRequestAnimationFrame ||
+            window.mozRequestAnimationFrame ||
+            window.oRequestAnimationFrame ||
+            window.msRequestAnimationFrame || 
+            function (callback) {
+                return window.setTimeout(callback, 17);
+            };
+    })()
+	
+	var setupFps = function(){
+
+        var lastTime = new Date(),
+            hits = 0, 
+            fps = '...',
+            hit = function(){
+                var nowTime = new Date(),
+                    dt = 0
+                
+                hits++
+                if (nowTime.getTime() -lastTime.getTime() > 1000){
+                    dt = nowTime.getTime() - lastTime.getTime();
+					fpsC = (~~(hits * 1000 / dt));
+					fps = 'fps: ' + fpsC;
+					if (fpsC < 40) {
+						fps = 'fps: WEAK';
+						Main.Credits.showFPS = true;
+					}
+					
+                    hits = 0;
+                    lastTime = nowTime;
+                }
+                return fps;
+            };
+        return hit;
+        };
+    
+    var hit = setupFps()
+
+    var Main = {
+        time: 0,
+        images: [
+            { src: "i1.png" },
+            { src: "i2.png" },
+            { src: "i3.png" },
+            { src: "i4.png" },
+            { src: "i5.png" }
+        ],
+        logo: null,
+        blur: 40,
+		hue: 0,
+		keybEvents: function() {
+			window.addEventListener('keyup', function(e) {
+				if (e.which == 70) {
+					Main.showFPS = !Main.showFPS; 
+					
+					return;
+				}
+				if (e.which == 38) {
+					Main.hue += 10;
+				}
+				if (e.which == 40) {
+					Main.hue -= 10;
+				}
+				
+				Main.body.style.webkitFilter = 'hue-rotate(' + Main.hue + 'deg)';
+				
+			})
+		},
+        Loader: {
+            STOR: {
+                readyCnt: 99,
+				domNode: document.getElementById('bar')
+            },
+            init: function() {
+
+				
+                Main.Loader.STOR.total = Main.Loader.STOR.readyCnt = Main.images.length + 1;
+                setTimeout(function() {
+					Main.Loader.load();
+				}, 1000);
+            },
+            load: function() {
+                Main.logo = new Image();
+                Main.logo.src = 'prestige-logo.png';
+                Main.logo.addEventListener('load', Main.Loader.onLoad);
+
+                Main.images.map(function(a,b) {
+                    a.obj = new Image();
+                    a.obj.src = a.src;
+                    a.obj.addEventListener('load', function(e) {Main.Loader.onLoad(b)});
+                })
+				
+            },
+            onLoad: function() {
+                Main.Loader.STOR.readyCnt--;
+				Main.Loader.STOR.domNode.style.width = (Main.Loader.STOR.total - Main.Loader.STOR.readyCnt) / Main.Loader.STOR.total * 70 + '%';
+                if (!Main.Loader.STOR.readyCnt) {
+					Main.Loader.STOR.domNode.innerHTML = "Done!";
+                    setTimeout(function() {
+						Main.Loader.STOR.domNode.style.display = "none";
+						Main.Start();
+					}, 1200)
+                }
+            }
+        },
+        Init: function() {
+			
+            var setDimensions = function() {
+                Main.w2 = Main.canv2.width = window.innerWidth
+                Main.h2 = Main.canv2.height = ~~(Main.w2 * (480 / 640)); 
+                if (Main.h2 >= window.innerHeight) {
+                    Main.h2 = Main.canv2.height = window.innerHeight;
+                    Main.w2 = Main.canv2.width = ~~(Main.h2 * 1.3333);
+                } else {
+                    Main.w2 = Main.canv2.width = window.innerWidth;
+                    Main.h2 = Main.canv2.height = ~~(Main.w2 / 1.333);
+                }
+                Main.canv2.style.marginTop =  ~~((window.innerHeight - Main.h2 ) /2) + "px";
+            }
+			Main.msx = /*New music("MK")*/          new Protracker();
+			Main.canv2 = document.getElementById('Canvas2'); 
+            Main.canv3 = document.getElementById('Canvas3');
+            
+            Main.canv2.style.webkitFilter = "blur(" + Main.blur + "px)";
+            
+            Main.ctx2 = Main.canv2.getContext('2d');
+            Main.ctx3 = Main.canv3.getContext('2d');
+            
+            Main.w3 = Main.canv3.width = 640;
+            Main.h3 = Main.canv3.height = 480;
+             
+            setDimensions();
+            
+            window.addEventListener('resize', function() {
+                setDimensions();
+            })
+            
+            Main.ctx2.webkitImageSmoothingEnabled = Main.ctx3.webkitImageSmoothingEnabled = false;
+            Main.keybEvents();
+            
+			Main.Loader.init();    
+        },
+        
+        Start: function() {
+            Main.ctx3.font = Main.ctx2.font = "12px 'bitx', Consolas, Tahoma, Arial";
+            Main.ctx3.strokeStyle = "#000";
+            Main.ctx3.lineWidth = 4.5;
+
+			//Main.msx.LoadAndRun('supernao.mod');
+			//Main.msx.setautostart(false);
+			Main.msx.load('supernao.mod');
+			Main.msx.onReady = function () {
+				Main.msx.repeat = true;
+				Main.msx.play();
+				Main.Bg.init();
+				Main.Paint();
+			};
+            
+        },
+        
+        Bg: {
+            COUNT: 80,
+            background: {r: 68,
+                g: 35,
+                b: 30,
+                ls: 0,
+                rad: 0
+            },
+            table: [],
+            imgTable: [],
+            backgroundShift: function() {
+                Main.Bg.background.ls = Math.sin(Main.Bg.background.rad) * 30 + 20
+                Main.Bg.background.rad += 0.2;
+                setTimeout(Main.Bg.backgroundShift, 200)            
+            },
+            init: function() {
+                var i = Main.Bg.COUNT,
+                    imagesCnt = Main.images.length;
+                    
+                for (i; i + 1; i--) {
+                    Main.Bg.imgTable[i] = {
+                        image: Main.images[~~(Math.random() * imagesCnt)].obj,
+                        r: i * 360 / Main.Bg.COUNT,
+                        s: -i * 0.3
+                    }
+                }
+                
+                setTimeout(function() {
+					Main.Bg.backgroundShift();
+				}, 8000);
+            },
+            
+            main: function() {
+                var i = Main.Bg.COUNT,
+                    size = 0;
+                
+				Main.ctx3.fillStyle =
+					"rgba(" + ~~(Main.Bg.background.r + Main.Bg.background.ls) + "," 
+					+ ~~(Main.Bg.background.g + Main.Bg.background.ls) + ","
+					+ ~~(Main.Bg.background.b + Main.Bg.background.ls) + ",1)";
+                
+                Main.ctx3.fillRect(0, 0, 640, 480);
+                Main.ctx3.save();
+                Main.ctx3.translate(320,240);
+                
+                for (i; i + 1 ; i--) {
+                    Main.ctx3.save();
+                    Main.ctx3.rotate(Main.Bg.imgTable[i].r);
+                    size = Math.max(0, Main.Bg.imgTable[i].s * 1.4);
+                    Main.ctx3.globalAlpha = Main.Bg.imgTable[i].s > 500 ? (700 - Main.Bg.imgTable[i].s) / 200 : 1;
+                    Main.ctx3.globalCompositeOperation = "source-over";
+                    if (size > 0) Main.ctx3.drawImage(Main.Bg.imgTable[i].image, 0, 0, size, size);
+                    
+                    Main.ctx3.restore();
+                    if (i == 30) Main.ctx3.drawImage(Main.logo, -280.5, -225.5);
+                }
+                
+                Main.ctx3.restore();
+                Main.Bg.move();
+            },
+            
+            move: function() {
+                var i = Main.Bg.COUNT;
+                for (i; i + 1 ; i--) {
+                    Main.Bg.imgTable[i].s = Main.Bg.imgTable[i].s + Math.max(.14, Main.Bg.imgTable[i].s * 0.03);
+                    Main.Bg.imgTable[i].r += 0.022;
+                    Main.Bg.imgTable[i].r = Main.Bg.imgTable[i].r % 360;
+                    if (Main.Bg.imgTable[i].s > 700) Main.Bg.imgTable[i].s = -i * 0.2;
+                }
+            }
+        
+        },
+        
+        Paint: function() {            
+            Main.Bg.main();
+            Main.Credits.draw();
+            
+            if (Main.blur > 0) {
+                Main.blur -= 0.7;
+                Main.canv2.style.webkitFilter = "blur(" + Math.max(0, Main.blur - 1)+ "px)";
+            }
+            
+            Main.ctx2.drawImage(Main.canv3, 20.5, 20.5,  Main.w2 - 40, Main.h2-40);
+            
+            setTimeout(function() {
+				requestAnimFrame(function() {Main.Paint(); });
+			}, 1000/70);
+        },
+        
+        Credits: {
+            SPEED: 0.02,
+			showFPS: false,
+            cScreen: 0,
+            timeout: 5000,
+            state: -1,
+            sin: 0,
+            x: 640,
+            
+            draw: function() {
+                var l = Main.Credits.SCREENS[Main.Credits.cScreen].TEXT.length,
+                    i = 0,
+					fps = 0,
+                    posY = Main.Credits.SCREENS[Main.Credits.cScreen].posY || 0;
+                    
+                //Main.ctx3.clearRect(0,0, 640,480);
+                Main.ctx3.fillStyle = "#fff";
+				
+                for (i; i < l; i++) {
+                    Main.ctx3.strokeText(
+                        Main.Credits.SCREENS[Main.Credits.cScreen].TEXT[i], 
+                        Main.Credits.x + .5, 
+                        100.5 + i * 16 + posY
+                    );
+                    Main.ctx3.fillText(
+                        Main.Credits.SCREENS[Main.Credits.cScreen].TEXT[i], 
+                        Main.Credits.x + .5, 
+                        100.5 + i * 16 + posY
+                    );
+                }
+                
+				if (Main.Credits.showFPS) {
+					fps = hit();
+					Main.ctx3.strokeText(fps, 520.5, 470);
+					Main.ctx3.fillText(fps, 520.5, 470)
+				}
+				
+                Main.Credits.slide();
+            },
+        
+            slide: function() {
+                if (Main.Credits.state === -1) {
+                    
+                    Main.Credits.sin += Main.Credits.SPEED;
+                    
+                    if (Main.Credits.sin > Math.PI / 2) {
+                        Main.Credits.state = 0;
+                        setTimeout(function() {
+                            Main.Credits.state = 1;
+                        }, Main.Credits.SCREENS[Main.Credits.cScreen].wait || Main.Credits.timeout);
+                    }
+                    
+                }
+                
+                if (Main.Credits.state === 1) {
+                    Main.Credits.sin -= Main.Credits.SPEED ;
+                    if (Main.Credits.sin < 0) {
+                        Main.Credits.state = 0;
+                        setTimeout(function() {
+                            Main.Credits.state = -1;
+                            Main.Credits.cScreen++;
+                            if (Main.Credits.cScreen >= Main.Credits.SCREENS.length) Main.Credits.cScreen = 1
+                        }, 10);
+                    }
+                }
+                
+                Main.Credits.x = 640 - Math.sin(Main.Credits.sin) * 460;
+            },
+        
+            SCREENS: [
+                {   wait: 1250,
+                    TEXT: [""]},
+                { posY: -50,
+				  wait: 5000,
+				  TEXT: [
+				    "The Mighty Mongols are back...",
+					"      And this time with",
+					"",
+					"     - MORTAL KOMBAT II -",
+					"",
+					"         From ACCLAIM",
+					"",
+					"",
+					"         Original by",
+					"",
+					"         - Hot Tuna -",
+					"",
+					"& Cracked by da Hamster Maniac",
+					"",
+					"            - Mok -"
+					]
+				},
+				
+				{ posY: -50,
+				  wait: 5000,
+				  TEXT: [
+					" ------------------------------",
+					"  TO BUY THE LATEST COPIERS FOR",
+					"   YOUR SEGA OR SNES WRITE TO:",
+					"",
+					"           PO BOX 547",
+					"          35100 PADOVA",
+					"             ITALY",
+					" ------------------------------",
+					"",
+					" To get in touch with us for",
+					"    any reason write to:",
+					"",
+					"           FAST CLUB",
+					"            BP 120",
+					"      78505 SARTROVILLE",
+					"            FRANCE",
+					"",
+					"   Or CALL +1-614-876-0807",
+					"       And Loggon under: ",
+					"",
+					"  Name:PRESTIGE    Pwd:APPLY",
+					"",
+					"  And leave a comment to any",
+					"   Prestige mongol there :)"
+					]
+				},
+				{ posY: 120,
+				  wait: 5000,
+				  TEXT: [
+					"            PRESTIGE",
+					"   Scratch our Balls and we'll",
+					"     follow you anywhere! :)"
+					]
+				},
+				{ posY: 180,
+				  wait: 5000,
+				  TEXT: [
+					"         Intro credits:",
+					"",
+					"javascript code",
+					"                             Patu",
+					"Superb music",
+					"                   Nao/Spaceballs",
+					"                    (PRESTiGE'94)",
+					"",
+					"Orginal Amiga code & design:",
+					"                   Stelios/Scopex"
+
+					]
+				}
+            ]
+        
+        }
+        
+    }
+	
+	window.addEventListener('load', function() {
+		Main.Init();
+	})
+
+	</script>
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-19369352-19', 'auto');
+  ga('send', 'pageview');
+
+</script>
+</html>

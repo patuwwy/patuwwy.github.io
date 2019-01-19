@@ -1,0 +1,1115 @@
+<html>
+	<head>
+		<title>Party Invitation</title>
+		<META http-equiv=Content-Type content="text/html; charset=iso-8859-2">
+		<link href='https://fonts.googleapis.com/css?family=Press+Start+2P' rel='stylesheet' type='text/css'>
+		<style>
+
+			@font-face {
+				font-family: '8bit_wondernominal';
+				src: url('8-bit_wonder-webfont.eot');
+				src: url('8-bit_wonder-webfont.eot?#iefix') format('embedded-opentype'),
+					 url('8-bit_wonder-webfont.woff') format('woff'),
+					 url('8-bit_wonder-webfont.ttf') format('truetype');
+				font-weight: normal;
+				font-style: normal;
+
+				}
+
+			* {box-sizing: border-box; -webkit-perspective: 300; -webkit-transform-origin: 50%; font-weight: normal !important}
+			body, #allWrap {background: #000;border-radius: 5% / 100%; overflow: hidden;font-family: "Press Start 2P"}
+			body,canvas:not(#scanv), html, #allWrap, .vignette, #overW, #overWin {padding:0; margin: 0; height: 100%; width: 100%; }
+			canvas { position:absolute; -webkit-animation: in 0.2s ease-out forwards; }
+			#scanv {display: none}
+			.loader {border-radius: 5% / 100%; padding: 2%; color: #8A7DE5; box-shadow:0 0 10px #352bbe; -webkit-transition: all .1s ease; background: #352BBE ; width: 80%; height: 90%; left: 10%; top: 5%;position: absolute; z-index: 4 }
+			.loader.hide {opacity: 0; }
+
+			a {color: #7396FF;}
+			a:hover {color: #7396FF}
+
+			h1 { font-size: 1.6vw; margin: 0 auto; padding: 0; line-height: 1.15em}
+
+			#status {display:none; z-index: 20; position:absolute; bottom: 0; left: 0; padding: 4px; font-size: 10px; color: #fff; background: rgba(0,0,0,0.8)}
+
+			.blur.in {-webkit-filter: blur(0); opacity: 1}
+			.blur {-webkit-filter: blur(10px); opacity: 0 }
+
+			.noise {background: url('noise.png') 0 0 repeat transparent; opacity: 0.2; width: 100%; height: 100%; position: absolute; z-index:5; }
+
+			@-webkit-keyframes in {
+				0% 		{ opacity:0; }
+				100%	{ opacity:1; }
+			}
+
+			#overW {position: absolute; top: 0; left: 0; z-index: 102;}
+			#overWin, #allWrap {position:relative; }
+
+			#capsW { display: none; opacity:0 ; -webkit-transition: -webkit-filter 1s ease,
+				-webkit-transform 1s ease; position: absolute; color: #fff;  max-width: 40%; font-size: 1vw; line-height: 1.3em; text-shadow: 4px 4px 10px #000; -webkit-transform: translateZ(0) translateX(-64px); }
+			#capsW.on {opacity: 1; -webkit-transform: translateZ(0) translateX(0)}
+
+			.vignette {-webkit-transform: translateZ(0); position: absolute; background: url('vignette.png') 50% 50% no-repeat transparent; background-size: cover; opacity: 1; z-index: 100}
+			.noise {display: none;}
+			#loadTXT {margin-top:1px;position: relative;display: inline-block; word-break: break-all;min-height:1em}
+			#loadTXT:after {width: 1em; height: 1.1em; display: block; position:absolute; bottom: 0; left: 100%; background: #8A7DE5; contet: ""; -webkit-animation: cursor 1s infinite linear}
+
+			@-webkit-keyframes cursor {
+				0% {display: none;}
+				50% {display: block;}
+			}
+
+	    #allWrap > canvas {width:100% !important; height: 100% !important; }
+		#allWrap > div:first-child {height: 100%; width: 100%; position:absolute; z-index:0}
+		</style>
+		<script src="js/three.js"></script>
+
+
+	</head>
+	<body>
+		<div id="allWrap">
+		<div>
+			<canvas id="scanv"></canvas>
+			<canvas id="tempCanvas"></canvas>
+		</div>
+		<div class="vignette"></div>
+		<div class="loader">
+			<p style="text-align: center">**** COMMODORE 64 ROM V1.1 ****<br/><br/>
+				64 RAM SYSTEM 38911 BASIC BYTES FREE
+			</p>
+			<p>READY.<br/><span id="loadTXT"><br/> </span></br>
+			</p>
+		</div>
+		<div class="noise"></div>
+		<div id="status">Audio connection lost...</div>
+		<div id="overW">
+			<div id="overWin">
+				<div id="capsW"></div>
+			</div>
+		</div>
+
+		<div>
+		<script>
+
+            var s = {
+				sourceCanv: document.getElementById('scanv'),
+				sourceCTX: null,
+				music: null,
+				audioPosition: 0,
+				currentTime: Date.now(),
+				context: null,
+				volume: 40,
+				volumeArray: [],
+				DemoTime: 0.7,
+				scene: null,
+				camera: null,
+				renderer: null,
+				statusNode: document.getElementById('status'),
+				spotlight2: null,
+				spotlight3: null,
+				ambL: {},
+				geom: null,
+				cube: null,
+				canv2: document.getElementById('tempCanvas'),
+				preInit: function() {
+                    s.Loader.init(function() {
+						s.main();
+					});
+                },
+				k1: 0,
+				textu: {},
+				clock: {},
+				planes: [],
+				Loader: {
+					ready: false,
+					init: function(callback) {
+						s.ctx2 = s.canv2.getContext('2d');
+						s.canv2.width = 800;
+						s.canv2.height = 600;
+						s.ctx2.webkitImageSmoothingEnabled = false;
+						s.Loader.text(function() {
+							callback()
+						});
+					},
+					c_text: 0,
+					dom_text: document.getElementById('loadTXT'),
+					text: function(callback) {
+						s.Loader.dom_text.innerHTML = s.Loader.TEXT.substring(0, s.Loader.c_text);
+						if (s.Loader.c_text <= s.Loader.TEXT.length) {
+							setTimeout(
+								function() {
+									s.Loader.c_text++;
+									s.Loader.text(callback);
+								},
+								~~(Math.random() * 100) + 50
+							);
+						} else {
+							s.Loader.bars(callback);
+						}
+					},
+					TEXT: 'LOAD "PARTY_IN(VI)TRO.JS"<br/>   ',
+					barsC: 200,
+					bars: function(callback) {
+						var c = s.ctx2, x = 200, l = 0,
+							h = s.canv2.height, w = s.canv2.width,
+							random = '<br/><br/><p style="max-height: 88px; overflow: hidden">';
+
+						//c.clearRect(0,0, s.canv2.width, s.canv2.height);
+
+						for (x ; x !== 0; x -= 1) {
+							rnd = {
+								r: ~~(Math.random() * 255),
+								g: ~~(Math.random() * 255),
+								b: ~~(Math.random() * 255),
+								y: ~~(Math.random() * h)
+							}
+							c.fillStyle = 'rgba(' + rnd.r + ',' + rnd.g + ',' + rnd.b + ', 1)';
+							c.fillRect(0, rnd.y, w, rnd.y / 20 + 2);
+						}
+
+						if (!s.Loader.ready && s.Loader.barsC > 0) {
+							requestAnimationFrame(function() {
+								s.Loader.barsC--;
+								s.Loader.bars(callback);
+							});
+							return;
+						} else {
+							for (l = 0; l < 500; l++) {
+								random += String.fromCharCode(Math.ceil(Math.random() * 50) + 62)
+							}
+							s.Loader.dom_text.innerHTML = s.Loader.dom_text.innerHTML + random + '</p><br/><br/>PLEASE WAIT... Computing data.<br/><br/>TURN UP VOLUME AND PRESS F11 NOW FOR FULL SCREEN MODE.<br/>KEEP FOCUS.';
+							callback();
+						}
+
+					}
+
+				},
+				trace: function() {
+					console.log(arguments);
+				},
+				images: [
+					{ u: "cb.png" },
+					{ u: "pictograms/1.3.png" },
+					{ u: "pictograms/1.4.png" },
+					{ u: "pictograms/2.1.png" },
+					{ u: "pictograms/3.1.png" },
+					{ u: "pictograms/3.2.png" },
+					{ u: "pictograms/3.4.png" },
+					{ u: "pictograms/5.2.png" }
+				],
+				loadImagesOnLoad: function() {
+
+				},
+				loadImagesProgress: 0,
+				loadImages: function(callback) {
+					var i, l = s.images.length;
+
+					s.images.map(function(a,b) {
+						a.img = new Image();
+						a.img.onload = function(a) {
+							s.trace(a);
+							s.loadImagesProgress++;
+							if (s.loadImagesProgress == l) {
+								s.trace('All images loaded!');
+								callback();
+							};
+						}
+						a.img.src = a.u;
+					})
+
+				},
+
+				main: function() {
+					s.loadMusic('jco.mp3', function() {
+						s.loadImages(function() {
+							document.querySelectorAll('.loader')[0].className = "loader hide";
+
+							s.init();
+						});
+					});
+				},
+
+				MUSIC_TEMPO: 140.028,
+				Music: {
+					currentBEAT: 0,
+				},
+                init: function() {
+					var lastVol = Math.random() * 100,
+						x = y = pos = c = 0,
+						render = null;
+
+					console.log(this, 'INIT!');
+
+					s.canv2.style.display = "none";
+					setTimeout(function() {
+						setInterval(function() {
+							if (s.volume == lastVol) {
+								s.statusNode.style.display = 'block';
+								s.volume = 40;
+							} else {
+								s.statusNode.style.display = 'none';
+							}
+							lastVol = s.volume;
+						}, 1000)
+					}, 500);
+
+					setInterval(s.events, 90);
+					setInterval(function() {
+						s.DemoTime += 0.01;
+					}, 10);
+
+					setInterval(function() {
+						//console.log('bpm!')
+						s.Music.currentBEAT++;
+						s.onBeat();
+					}, 1000 * 60 / 140)
+
+					s.clock = new THREE.Clock();
+
+                    s.renderer = new THREE.WebGLRenderer({antialiasing: true});
+					s.renderer.setSize(800,600);
+					s.renderer.shadowMapEnabled = true;
+
+					document.getElementById('allWrap').appendChild(s.renderer.domElement)
+
+                    s.scene = new THREE.Scene();
+					s.camera = new THREE.PerspectiveCamera(130, window.innerWidth / window.innerHeight, 0.1, 10000);
+
+                    s.scene.fog = new THREE.FogExp2( 0x000000, 0.0015 );
+
+                    s.camera.position.z = -50;
+                    s.camera.position.y = 30;
+                    s.camera.position.x = -100;
+
+					s.camera.lookAt({ x: 0, y: 0, z: 0 });
+					s.camera.lAt = { x: 0, y: 0, z: 0 };
+
+					s.scene.add(s.camera);
+
+					s.geom = new THREE.CubeGeometry(10, 10, 10);
+
+					s.ambL = new THREE.AmbientLight(0x000000);
+					s.ambLCColor = {r: 0, g: 0, b: 0};
+					s.scene.add(s.ambL);
+
+					s.spotlight2 = new THREE.SpotLight(0xfffffff);
+					s.spotlight2.position.set(0,160, 0);
+					s.spotlight2.shadowDarkness = 0.85;
+					s.spotlight2.intensity = 0;
+					s.spotlight2.castShadow = true;
+					s.scene.add(s.spotlight2);
+
+					s.textu = new THREE.Texture(s.canv2);
+					s.textu.needsUpdate = true;
+
+					s.uniforms = {
+						iGlobalTime: {type: "f", value: 1.0},
+						iChannel0: {type: "t", value: s.textu},
+						alpha: {type: "f", value: 1.0},
+						mX: {type: "f", value: 0.01},
+						mY: {type: "f", value: 0.03}
+					}
+
+					s.planes[0] = new THREE.Mesh(
+						new THREE.PlaneGeometry(800,640),
+						new THREE.ShaderMaterial({
+							uniforms: s.uniforms,
+							vertexShader:   document.getElementById('vertexShader').textContent,
+							fragmentShader: document.getElementById('fragmentShader').innerHTML,
+							//blending: THREE.AdditiveBlending,
+							transparent: true,
+							side: THREE.DoubleSide })
+					)
+
+					s.planes[0].position.z = -160;
+					s.planes[0].material.depthTest = false;
+					s.camera.add(s.planes[0]);
+
+					floorTexture = new THREE.ImageUtils.loadTexture( 'checkerboard.jpg' );
+					floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
+					floorTexture.repeat.set( 10, 10 );
+
+					var floorMaterial = new THREE.MeshPhongMaterial({
+						map: floorTexture,
+						transparent: true,
+						opacity: 0.4,
+						blending: THREE.AlphaBlending,
+						side: THREE.DoubleSide });
+
+					var floorGeometry = new THREE.PlaneGeometry(2048, 2048, 10, 10);
+
+					s.floor = new THREE.Mesh(floorGeometry, floorMaterial);
+					s.floor.position.y = -100;
+					s.floor.rotation.x = Math.PI /2
+
+
+					s.floor.receiveShadow = true;
+					s.scene.add(s.floor);
+
+					var lavaTexture = new THREE.ImageUtils.loadTexture( 'cb.png' );
+					lavaTexture.wrapS = lavaTexture.wrapT = THREE.RepeatWrapping;
+
+					vertex = new THREE.MeshLambertMaterial( {side:THREE.DoubleSide,
+						transparent: true, opacity: .7,
+						map: lavaTexture
+					});
+
+					icos = new  THREE.CubeGeometry( 60, 60, 60 ),
+
+					s.cube = new THREE.Mesh(
+						icos, vertex
+					);
+					s.uniforms2 = {
+						iGlobalTime: {type: "f", value: 1.0},
+						ambLR: {type: "f", value: 0.0},
+						ambLG: {type: "f", value: 0.0},
+						ambLB: {type: "f", value: 0.0},
+						volume: {type: "f", value: 0.0}
+					}
+					var shader = THREE.ShaderLib[ "cube" ];
+
+					s.scene.add(new THREE.Mesh(
+						new THREE.CubeGeometry( 2048, 2048, 2048 ),
+						new THREE.MeshPhongMaterial({
+							shading: THREE.SmoothShading,
+							specular: 0x009900, shininess: 255,
+							map:  new THREE.ImageUtils.loadTexture( 'sky.png' ),
+							color: 0x0000ff, side: THREE.BackSide
+						})/*
+						new THREE.ShaderMaterial({
+							uniforms: s.uniforms2,
+							vertexShader: shader.vertexShader,
+							fragmentShader: document.getElementById('fragmentShader2').innerHTML,
+							//blending: THREE.AdditiveBlending,
+							//transparent: true,
+							side: THREE.DoubleSide })
+                        */
+					));
+
+					s.cube.castShadow = true;
+
+					s.container = new THREE.Object3D();
+					s.container.position.y = 60,
+					s.container.add(s.cube);
+					s.scene.add(s.container);
+
+					s.Loader.ready = true;
+					s.canvasTexts.init();
+					s.render();
+                },
+
+				render: function () {
+					var rnd = Math.random(),
+						delta = s.clock.getDelta();
+
+					s.calcs();
+
+					s.renderer.render(s.scene, s.camera);
+
+					requestAnimationFrame(s.render);
+				},
+				floorSpeed: 0.015,
+				floorRotationDelta: 0,
+				k1_multipler: 0.94,
+				cubeAMP: 120,
+				calcs: function() {
+
+					s.ambL.color = new THREE.Color().setRGB(s.ambLCColor.r /256, s.ambLCColor.g /256, s.ambLCColor.b/256);
+
+					s.uniforms.iGlobalTime.value += 0.04;
+					s.uniforms2.iGlobalTime.value += 0.04;
+
+					s.uniforms2.ambLG.value = s.ambLCColor.r / 256;
+					s.uniforms2.ambLG.value = s.ambLCColor.g / 256;
+					s.uniforms2.ambLB.value = s.ambLCColor.b / 256;
+					s.uniforms2.volume.value = s.volume / 4096 / 100;
+
+					s.prevTime = s.currentTime;
+					s.currentTime = Date.now();
+
+					floorTexture.offset.y += s.floorSpeed;
+
+					s.floor.rotation.x += s.floorRotationDelta;
+					s.container.rotation.x += 0.03;
+					s.container.rotation.z += 0.02;
+					s.container.rotation.z += 0.011;
+
+					s.container.position.y = Math.abs(Math.cos(s.k1)) * s.cubeAMP - 70;
+					s.k1 = ((s.DemoTime * 2) * s.k1_multipler) % Math.PI;
+
+				},
+
+				canvasTexts: {
+					gradient: {},
+					init: function() {
+						s.ctx2.clearRect(0,0,800,600);
+						s.canvasTexts.gradient = s.ctx2.createLinearGradient(0, 640, 800, 640);
+						s.canvasTexts.gradient.addColorStop(0.000, 'rgba(255, 255, 0, 1)');
+						s.canvasTexts.gradient.addColorStop(0.500, 'rgba(255, 0, 255, 1)');
+						s.canvasTexts.gradient.addColorStop(1.000, 'rgba(0, 255, 255, 1)');
+					},
+					print: function(txt, callback) {
+						var r = 0,
+							c = 0,
+							pR = 0,
+							sI = setInterval(function() {
+
+								s.ctx2.fillStyle = "#000000";
+								s.ctx2.fillText(txt[r].substr(0, c), 82, 150 + r * 18 + 2);
+								s.ctx2.fillStyle = s.canvasTexts.gradient
+								s.ctx2.font = "16px 'Press Start 2P'";
+								s.ctx2.fillText(txt[r].substr(0, c), 80, 150 + r * 18);
+								s.textu.needsUpdate = true;
+								c++
+								if (c > txt[r].length) {
+									c = 0;
+									r++;
+								};
+								if (r >= txt.length) {
+									clearTimeout(sI);
+									if (callback) callback();
+								}
+
+							}, 15),
+							sS = setInterval(function() {
+								s.planes[0].rotation.y += 0.1;
+								if (s.planes[0].rotation.y > 20);
+								clearTimeout(sS);
+							}, 20);
+
+						s.planes[0].rotation.y = 0;
+
+						//s.ctx2.clearRect(0,0, s.canv2.width, s.canv2.height);
+					}
+				},
+				eventsBusy: false,
+				events: function() {
+					var aPOS = Number(s.audioPosition.toFixed(1)),
+						dP = s.DATA[aPOS],
+						isCam = false;
+
+					if (typeof(dP) == "object") {
+						console.log(aPOS);
+						s.eventsBusy = true;
+						isCam = typeof(s.DATA[aPOS]).camera == "object";
+
+						if (isCam) {
+							s.tween( s.camera, dP.camera, dP.camera.time || 60, Number(aPOS));
+						}
+						if (typeof(dP).caption == "object") {
+							s.caps.next(aPOS);
+						};
+						if (typeof(dP.fn) == "function") dP.fn();
+						setTimeout(function() {
+							s.eventsBusy = false;
+						}, isCam ? s.DATA[aPOS].camera.time : 60);
+					};
+				},
+				tweenBusy: false,
+				tweenInt: false,
+				tween: function(a,b,t, tS) {
+					var t1 = 0,	c = null;
+
+					t = b.time || t;
+
+					if (s.tweenInt) clearInterval(s.tweenInt);
+					s.tweenInt = setInterval(function() {
+						t1++;
+						for (i in b) {
+							switch (i) {
+								case "lAt":
+									s.camera.lookAt({
+										x: Math.easeInOutSine(t1, a[i].x, b[i].x - a[i].x, t),
+										y: Math.easeInOutSine(t1, a[i].y, b[i].y - a[i].y, t),
+										z: Math.easeInOutSine(t1, a[i].z, b[i].z - a[i].z, t)
+									});
+									break;
+								case "position":
+									for (v in b[i]) {
+										s.camera[i][v] = Math.easeInOutSine(t1, a[i][v], b[i][v]- a[i][v], t);
+
+									};
+									break;
+								case "up":
+									s.camera.up =
+										new THREE.Vector3(
+											Math.easeInOutSine(t1, a.up.x, b[i][0] - a.up.x, t),
+											Math.easeInOutSine(t1, a.up.y, b[i][1] - a.up.y, t),
+											Math.easeInOutSine(t1, a.up.z, b[i][2] - a.up.z, t)
+										);
+									break;
+							};
+						};
+						if (t1 >= t) {
+							clearInterval(s.tweenInt);
+						}
+					}, 18);
+
+				},
+				ambLColor: {r: 34, g: 34, b: 34},
+				ambLCColor: {r: 0, g: 0, b: 0},
+				ambLBusy: false,
+				ambLInt: {},
+				flash: function(d) {
+					s.ambLBusy = false;
+					s.fadeAmbL({r: 255, g: 255, b: 255}, true, d);
+					s.ambLBusy = true;
+				},
+				fadeAmbL: function(o, busy, d) {
+					var d = d || 5,
+						i = 0,
+						f = { r: false, g: false, b: false }
+
+					if (s.ambLBusy) return;
+					s.ambLBusy = busy || s.ambLBusy;
+					clearInterval(s.ambLInt);
+					s.ambLCColor = o;
+
+					s.ambLInt = setInterval(function() {
+						if (s.ambLColor.r < s.ambLCColor.r) { s.ambLCColor.r -= d;} else { f.r = true}
+						if (s.ambLColor.g < s.ambLCColor.g) { s.ambLCColor.g -= d;} else { f.g = true}
+						if (s.ambLColor.b < s.ambLCColor.b) { s.ambLCColor.b -= d;} else { f.b = true}
+						if (f.r == true && f.g == true && f.b == true) {
+							clearInterval(s.ambLInt);
+							s.ambLCColor = s.ambLColor;
+							s.ambLBusy = false;
+						};
+					}, 20);
+				},
+				onBeatActive: false,
+				onBeat: function() {
+					var v;
+					if (!s.onBeatActive) return;
+					if (!((s.Music.currentBEAT) % 2))	{
+						v = Math.min(~~s.volume* 2 , 255)
+						s.fadeAmbL({r: v, g: v, b: v});
+						console.log('on full Beat');
+					}
+				},
+				caps: {
+					current: 0,
+					destDOM: document.getElementById('capsW'),
+					next: function(tS) {
+						var i = {};
+
+						s.caps.destDOM.className = "";
+						setTimeout(function() {
+							var t = '';
+							for (i in s.DATA[tS].caption.s) {
+								t = s.DATA[tS].caption.s[i];
+								s.caps.destDOM.style[i] = t + ( Number(t) ? '%' : '');
+							};
+
+							s.caps.destDOM.style.textAlign = Number(s.DATA[tS].caption.s.right) ? 'right' : 'left'
+							s.caps.destDOM.innerHTML = s.DATA[tS].caption.t;
+							s.caps.destDOM.className = 'on';
+						}, 300);
+					}
+
+				},
+
+				// S Y N C H R O;
+
+				DATA: {
+
+					1.0: { camera: {
+								position: {x: -100, y: 120, z: 140}, lAt: {x: 100, y: 0, z: -100}, up: [.4, 1, .9],
+								time: 200
+						},
+						fn: function() {
+							s.spotlight2.intensity = 2;
+
+							//s.flash();
+						}
+					},
+
+					8.6: {
+						caption: {
+							t: '<p>7.0s</p>',
+							s: { right: 5, bottom: 'auto', left : 'auto', top : 5 }
+						},
+						fn: function() {
+							s.ambLColor = {r:32, g:32, b:32}
+							s.spotlight2.intensity = 2;
+							s.flash(2);
+							s.onBeatActive = true;
+						}
+					},
+
+					15.0: { camera: {
+								position: {x: -20, y: 100, z: -130},	lAt: {x: -30, y: 00, z: 0}, up: [1, 1, 1],
+								time: 300
+							},
+							caption: {
+								t: '<h1>15.4</h1>',
+								s: { right: 'auto', bottom: 5, left : 5, top : 'auto' }
+							},
+							fn: function() {
+								s.ctx2.clearRect(0,0, s.canv2.width, s.canv2.height);
+								s.canvasTexts.print([
+									'Hello',
+									'',
+									'Do You remember?'
+								]);
+								//s.ctx2.clearRect(0,0, s.canv2.width, s.canv2.height);
+								//s.ctx2.drawImage(s.images[2].img,0,0);
+
+								s.flash();
+							}
+					},
+
+					18.6: { 	camera: {
+							position: {x: 200, y: 104, z: 50 }, lAt: {x: 0, y: 0, z: 0}, up: [0.1, .9, 0.5],
+							time: 700,
+						},	caption: {
+								t: '22.3',
+								s: { right : 5, bottom : 5, left: 'auto', top: 'auto' }
+							},
+						fn: function() {
+							s.ctx2.clearRect(0,0, s.canv2.width, s.canv2.height);
+							s.canvasTexts.print([
+								'We\'re making a little party..',
+								'For some rest after work...'
+							], function() {
+								s.ctx2.drawImage(s.images[2].img, 200,200, 400, 300);
+							}
+							);
+
+							s.flash();
+						}
+					},
+
+					29.1: { 	camera: {
+								position: {x: -200, y: 140, z: 220}, lAt: {x: 200, y: 0, z: 0}, up: [0, 1, .5],
+								time: 500,
+							},
+							caption: {
+								t: '<ul>' +
+									'<li>29.1</li></ul>',
+								s: { right : 5, bottom : 5, left: 'auto', top: 'auto' }
+							},
+							fn: function() {
+								s.ctx2.clearRect(0,0, s.canv2.width, s.canv2.height);
+								s.ambLColor = {r:0, g:0, b:0}
+								s.k1_multipler = 0.36;
+								s.cubeAMP = 200;
+								s.flash(1);
+								s.canvasTexts.print([
+
+									'________  ________           ____ ____',
+									'\\_____  \\/   __   \\         /_   /_   |',
+									' /  ____/\\____    /  ______  |   ||   |  ',
+									'/       \\   /    /  /_____/  |   ||   | ',
+									'\\_______ \\ /____/            |___||___|',
+									'        \\ /',
+									'',
+									'                           this friday!',
+									'               address included in mail'
+								]);
+							}
+						},
+					30.2: { 	camera: {
+								position: {x: 200, y: 300, z: 120}, lAt: {x: 0, y: 0, z: 0}, up: [0, 1, .5],
+								time: 5000,
+							},
+							fn: function() {
+								s.onBeatActive = false;
+							}
+					},
+					42.8: { 	camera: {
+								position: {x: 90, y: 80, z: -140}, lAt: {x: 100, y: 40, z: 10}, up: [1.3, 1.3, .5],
+								time: 10000
+							},
+							caption: {
+								t: '<h1>42.8</h1>',
+								s: { right : 5, bottom : 5, left: 'auto', top: 'auto' }
+							},
+							fn: function() {
+								s.ctx2.clearRect(0,0, s.canv2.width, s.canv2.height);
+								//s.ctx2.drawImage(s.images[3].img, 200,100, 600,500);
+								s.textu.needsUpdate = true;
+								s.ambLColor = {r:32, g:32, b:32}
+								s.k1_multipler = 0.4;
+								s.flash(8);
+							}
+						},
+					43.4 : { fn: function() { s.ambLColor = {r:0, g:0, b:32};s.flash(15); } },
+					44.0 : { fn: function() { s.ambLColor = {r:32, g:0, b:0}; s.flash(15); } },
+					44.6 : { fn: function() { s.ambLColor = {r:0, g:64, b:0};s.flash(15); } },
+
+					46.3 : { fn: function() { s.flash(8); } },
+					46.9 : { fn: function() { s.ambLColor = {r:0, g:0, b:255};s.flash(15); } },
+					47.5 : { fn: function() { s.ambLColor = {r:32, g:0, b:0}; s.flash(15); } },
+					48.1 : { fn: function() { s.ambLColor = {r:0, g:255, b:0};s.flash(15); } },
+
+					49.7 : { fn: function() { s.flash(8); } },
+					50.3 : { fn: function() { s.ambLColor = {r:0, g:0, b:32};s.flash(15);  } },
+					50.9 : { fn: function() { s.ambLColor = {r:255, g:0, b:0}; s.flash(15); } },
+					51.5 : { fn: function() { s.ambLColor = {r:0, g:0, b:255};s.flash(15); } },
+
+					52.1 : { fn: function() { s.flash(8); } },
+					52.7 : { fn: function() {  s.ambLColor = {r:0, g:0, b:32};s.flash(15); } },
+					53.3 : { fn: function() { s.ambLColor = {r:0, g:64, b:0}; s.flash(15); } },
+					53.9 : { fn: function() { s.ambLColor = {r:255, g:0, b:255}; s.flash(15); } },
+
+					54.5 : { fn: function() { s.flash(8); } },
+					55.1 : { fn: function() { s.flash(8); s.onBeatActive = true;} },
+
+					54.9: {	camera: {
+								position: {x: -60, y: 120, z: 150}, lAt: {x: 20, y: 0, z: 0}, up: [0, .3, .4],
+								time: 3000
+
+							},
+							caption: {
+								t: '<h1>54.9</h1>',
+								s: { right : 5, top : 5, left: 'auto', bottom: 'auto' }
+							},
+							fn: function() {
+								s.ambLColor = {r:32, g:32, b:32};
+								s.flash(20);
+								s.ctx2.clearRect(0,0, s.canv2.width, s.canv2.height);
+								//s.ctx2.drawImage(s.images[4].img, 200,200, 400, 300);
+								s.textu.needsUpdate = true;
+								s.floorRotationDelta = .021;
+							}
+						},
+
+					63.2: { 	camera: {
+								position: {x: 100, y: 120, z: 160}, lAt: {x: 0, y: 0, z: -100}, up: [0, 0, 0],
+								time: 100
+							},
+							caption: {
+								t: '<h1>63.0</h1>',
+								s: { left : 5, top : 5, right: 'auto', bottom: 'auto' }
+							},
+							fn: function() {
+								s.cubeAMP = 130;
+								s.flash();
+								s.floor.rotation.x = Math.PI / 2;
+								s.floorRotationDelta = 0;
+								s.ctx2.clearRect(0,0, s.canv2.width, s.canv2.height);
+								s.ctx2.drawImage(s.images[5].img, 200,200, 400, 300);
+								s.textu.needsUpdate = true;
+								s.canvasTexts.print([
+									'You should bring your drinks',
+									'',
+									'          - we won\'t support alcohol.'
+								]);
+								s.k1_multipler = 0.9 * 1.25;
+							}
+						},
+					63.4: { camera: {
+						position: {x: 50, y: 120, z: 140}, lAt: {x: 0, y: 0, z: -100}, up: [0.01, 0.01, 0.01],
+								time: 1000
+							}
+						},
+					70.1: { 	camera: {
+							position: {x: 100, y: -44, z: 150 }, lAt: {x: 0, y: 0, z: 0}, up: [0, 1, 0.5]
+						},
+						caption: {
+							t: '<h1>70.3</h1>',
+							s: { right: 5, bottom: 'auto', left : 'auto', top : 5 }
+						},
+						fn: function() {
+							s.ctx2.clearRect(0,0, s.canv2.width, s.canv2.height);
+							s.canvasTexts.print([
+									'Smoking allowed in restricted zones.'
+
+							]);
+							s.flash();
+						}
+					},
+					73.5: {
+						fn: function() {
+							s.ctx2.clearRect(0,0, s.canv2.width, s.canv2.height);
+							s.canvasTexts.print([
+									'2 Screens',
+									'',
+									'PS3 / X360...',
+									'Bring your games!'
+							]);
+							s.flash();
+						}
+					},
+					77.4: {
+						fn: function() {
+							s.ctx2.clearRect(0,0, s.canv2.width, s.canv2.height);
+							s.canvasTexts.print([
+								'Tournaments:',
+								'',
+								'Mortal Kombat (x360)',
+								'Injustice (PS3)'
+							]);
+							s.flash();
+						}
+					},
+					84.0: { 	camera: {
+								position: {x: 30, y: 10, z: 250}, lAt: {x: -90, y: 10, z: 0}, up: [-1.4, -1.6, 1.5],
+								time: 12000
+							},
+							caption: {
+								t: '<h1>84.2</h1>',
+								s: { left : 5, top : 5, right: 'auto', bottom: 'auto' }
+							},
+							fn: function() {
+								s.ctx2.clearRect(0,0, s.canv2.width, s.canv2.height);
+								s.canvasTexts.print([
+									'No major food needed.',
+									'You can bring some chips, snacks...']
+								);
+								//s.ctx2.drawImage(s.images[6].img, 200, 200, 400, 300);
+								s.textu.needsUpdate = true;
+								s.flash();
+							}
+						},
+
+					90.7: { 	camera: {
+								position: {x: 280, y: 30, z: 220}, lAt: {x: 100, y: 0, z: 0}, up: [0, 1, 0],
+								time: 2000
+							},
+							caption: {
+								t: '<h1>90.8</h1>',
+								s: { left: 5, bottom : 5, right: 'auto', top: 'auto' }
+							},
+							fn: function() {
+								s.ctx2.clearRect(0,0, s.canv2.width, s.canv2.height);
+								s.canvasTexts.print([
+									'You can came with your second half.',
+									'It\'s no problem for us!'
+								]);
+								s.flash();
+								s.ctx2.drawImage(s.images[7].img, 200, 200, 400, 300);
+								s.onBeatActive = false;
+								s.k1_mulitpler = 1.1;
+							}
+						},
+
+					100.4: {	camera: {
+								position: {x: 260, y: 30, z: 150}, lAt: {x: -90, y: 10, z: 0}, up: [0, 0, 0],
+								time: 10000
+						},
+						caption: {
+								t: '<h1>90.8</h1>',
+								s: { left: 5, bottom : 5, right: 'auto', top: 'auto' }
+						},
+						fn: function() {
+							var c = 10,
+								i =	setInterval(function() {
+										s.spotlight2.intensity = c;
+										c -= 0.025;
+										if (c < 0) clearInterval(i);
+									}, 20);
+
+							s.ambLColor = {r:0, g:0, b:0}
+							s.flash(2)
+							s.ctx2.clearRect(0,0, s.canv2.width, s.canv2.height);
+							s.canvasTexts.print([
+								'Confirm You are comming',
+								'                         - Zuza & Patryk'
+							]);
+							setTimeout(function() {
+								s.ctx2.clearRect(0,0, s.canv2.width, s.canv2.height);
+								s.canvasTexts.print([
+									'We\'re making a little party..',
+									'For some rest after work...',
+									'',
+									'                             29-11-2013',
+									'              this friday!(piateczek:-)',
+									'               address included in mail'
+								]);
+								setTimeout(function() {
+									s.ctx2.clearRect(0,0, s.canv2.width, s.canv2.height);
+									s.canvasTexts.print([
+										'We hope You\'ll be here!'
+									]);
+									s.textu.needsUpdate = true;
+									setTimeout(function() {
+										s.uniforms.mY.value = 0.004;
+										s.uniforms.mX.value = 0.004;
+										s.ctx2.clearRect(0,0, s.canv2.width, s.canv2.height);
+										s.canvasTexts.print([
+											'Code: Patu',
+											'Music: jco (www.jco.de)'
+										]);
+										s.textu.needsUpdate = true;
+									}, 2000)
+								}, 6000)
+							}, 8000)
+						}
+					}
+				},
+
+                loadMusic: function loadMusic(url, callback) {
+                    var request = new XMLHttpRequest();
+                    request.open('GET', url, true);
+                    request.responseType = 'arraybuffer';
+
+					window.AudioContext = window.AudioContext||window.webkitAudioContext;
+                    s.context = new AudioContext();
+
+                    request.onload = function() {
+                        s.context.decodeAudioData(request.response, function(buffer) {
+                            s.music = buffer;
+							s.playMusic(callback);
+                        }, function(e) {console.log(e)});
+                    }
+                    request.send();
+                },
+
+				playMusic: function(callback) {
+					s.AudioSource = s.context.createBufferSource();
+					s.AudioSource.buffer = s.music;
+					s.AudioSource.connect(s.context.destination);
+
+					var splitter = s.context.createChannelSplitter();
+
+                    s.AudioSource.connect(splitter);
+
+                    s.analyser = s.context.createAnalyser();
+                    s.analyser.smoothingTimeConstant = 0.3;
+                    s.analyser.fftSize = 1024;
+
+                    splitter.connect(s.analyser,0,0);
+                    //splitter.connect(analyser2,1,0);
+
+					var gainNode = s.context.createGain();
+					s.AudioSource.connect(gainNode);
+					gainNode.connect(s.context.destination);
+
+					//s.music.gain = 0.01;
+
+					s.audioProcess = s.context.createScriptProcessor(2048, 1, 2);
+					s.audioProcess.connect(s.context.destination);
+
+					s.analyser.connect(s.audioProcess);
+
+					function getAverageVolume(array) {
+						var i = values = 0, length = array.length;
+
+						for (i = 0; i < length; i++) values += array[i];
+
+						return {average: (values / length), array: array};
+					}
+
+					s.audioProcess.onaudioprocess = function() {
+						var array = new Uint8Array(s.analyser.frequencyBinCount), vol = 0;
+
+						s.analyser.getByteFrequencyData(array);
+						vol = getAverageVolume(array)
+						s.volume = vol.average;
+						s.volumeArray = vol.array;
+						s.audioPosition = s.audioProcess.context.currentTime;
+					};
+
+					s.AudioSource.addEventListener('ended', function() {
+						s.AudioSource.start(0);
+					});
+					s.AudioSource.start(0);
+
+					callback();
+				}
+
+			};
+
+			Math.easeInOutSine = function (t, b, c, d) {
+				return -c / 2 * (Math.cos(Math.PI * t / d) - 1) + b;
+			};
+
+            window.addEventListener('load', function() {
+				s.preInit();
+            }, false);
+
+			window.addEventListener('resize', function() {
+				if (s.renderer) s.renderer.setSize(window.innerWidth, window.innerHeight);
+            }, false);
+
+			/*
+				FIRST:
+					This release is not optimised and has duplicated fragments of code
+
+				LAST:
+					I hope You enjoyed watching this
+
+			*/
+
+		</script>
+
+
+		<script id="vertexShader" type="x-shader/x-vertex">
+			varying vec2 vUv;
+			void main() {
+				vUv = uv;
+				gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+			}
+		</script>
+		<script id="fragmentShader" type="x-shader/x-vertex">
+			uniform sampler2D iChannel0;
+			uniform float iGlobalTime;
+			varying vec2 vUv;
+			uniform float mY;
+			uniform float mX;
+			void main (void) {
+				vec2 position = vUv;
+				position.x = position.x + cos(position.y * 15.0 + iGlobalTime * 1.0) * mX;
+				position.y = position.y + sin(position.x * 5.0 + iGlobalTime * 2.0) * mY;
+				vec4 col = texture2D( iChannel0,position);
+				gl_FragColor = col;
+			}
+		</script>
+		<script id="vertexShader2" type="x-shader/x-vertex">
+			//varying vec2 vUv;
+			void main() {
+				//vUv = uv;
+				gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+			}
+		</script>
+		<script id="fragmentShader2" type="x-shader/x-vertex">
+			uniform float iGlobalTime;
+			uniform float ambLR;
+			uniform float ambLG;
+			uniform float ambLB;
+			uniform float volume;
+			// http://www.fractalforums.com/new-theories-and-research/very-simple-formula-for-fractal-patterns/
+
+			float field(in vec3 p) {
+				float strength = 13. + .03 * log(1.e-6 + fract(sin(iGlobalTime) * 4373.11));
+				float accum = 0.;
+				float prev = 0.;
+				float tw = 0.;
+				for (int i = 0; i < 32; ++i) {
+					float mag = dot(p, p);
+					p = abs(p) / mag + vec3(-.25, -.14, -1.5);
+					float w = exp(-float(i) / 7.);
+					accum += w * exp(-strength * pow(abs(mag - prev), 2.3));
+					tw += w;
+					prev = mag;
+				}
+				return max(0., 5. * accum / tw - .7);
+			}
+
+			void main() {
+				vec2 uv = 2. * gl_FragCoord.xy / vec2(2048,2048) - 1.;
+				vec2 uvs = uv * vec2(2048,2048) / max(2048., 2048.);
+				vec3 p = vec3(uvs / 4., 0) + vec3(1., -1.3, 0.);
+				p += .2 * vec3(sin(iGlobalTime / 16.), sin(iGlobalTime / 12.),  sin(iGlobalTime / 128.));
+				float t = field(p);
+				float v = (1. - exp((abs(uv.x) - 1.) * 6.)) * (1. - exp((abs(uv.y) - 1.) * 6.));
+				gl_FragColor = mix(.4, 1., v) * vec4(1.8 * t * t * t, 1.4 * t * t, t, 1.0) * vec4(ambLR, ambLG, ambLB, 1);
+			}
+
+		</script>
+
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-19369352-19', 'auto');
+  ga('send', 'pageview');
+
+</script>
+
+
+
+	</body>
+</html>

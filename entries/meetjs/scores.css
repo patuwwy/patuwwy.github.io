@@ -1,0 +1,15 @@
+* {	margin: 0;	padding: 0; box-sizing: border-box;}
+
+body {background: rgba(0,0,0,0.2); padding: 24px; font-family: Arial, sans-serif}
+
+ul { -webkit-perspective: 300; }
+li {
+    -webkit-transform: rotateX(90deg); 
+    -webkit-transition: all 1s ease; display: block; margin-bottom: 20px; width: 100%; background: #fff; font-size: 24px; font-weight: bold; }
+li span {display: block; float: left; padding: 5px;}
+li span:first-child + span { float: right; width: 200px; background: #000; color: #fff; text-align: center;}
+li:after {display: block; content:""; float: none; clear:both;}
+
+body.ready li { -webkit-transform: rotateX(0); }
+    
+    

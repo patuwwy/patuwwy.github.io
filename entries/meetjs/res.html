@@ -1,0 +1,133 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <link href='http://fonts.googleapis.com/css?family=Share+Tech' rel='stylesheet' type='text/css'>
+        <style>
+            
+            body {padding: 10px; background: transparent; font: 18px 'Share Tech', sans-serif; overflow: hidden}
+            header article {background: #000; margin-bottom: 10px; color: #fff}
+            header article * {color: #fff}
+            article article { background: #eee;margin-bottom: 10px;  }
+            article:after {clear: both; float: none; content: ""; display: block; }
+            nick, test, bytes, score {color: #000; padding: 2px 5px; }
+            nick {float: left;}
+            test, bytes, score {float: right; width: 100px;  text-align: center}
+            section bytes, section test, section bytes, section score {color: #fff}
+            section bytes { background: #408;}
+            section test { background: #404;}
+            section score { background: #804;}
+            
+            article[id] { -webkit-perspective: 200 }
+            .score.ready:first-child { background: #FFF14D }
+            .score {font-size: 22px; -webkit-transform: scale(10) rotateX(-180deg) translateZ(-1200px); -webkit-transition: all 1s ease; opacity: 0 }
+            .score.ready {-webkit-transform: scale(1) rotateX(0) translateZ(0); opacity: 1 }
+            .score.away {
+                -webkit-transform: rotateX(90deg) translateZ(-1400px) 
+            }
+            
+            section {position: relative; width: 100%;  }
+            #oldscores, #scoreboard {position: absolute; top: 0; left: 0; width: 100%; }
+            
+            h1 { color: #fff; background: #000; padding: 5px; text-align: center; }
+            h1 b { color: #f0f;}
+        </style>
+        
+    </head>
+    <body>
+        <h1>LIVE COMPO RESULTS <b>j.mp/mjscompo</b></h1>
+        <header>
+            <article>
+                <nick>Nick</nick>
+                <test>Test</test>
+                <bytes>Bytes</bytes>
+                <score>Score</score>
+            </article>
+        </header>
+        <section><article id="oldscores"></article><article id="scoreboard"></article></section>
+    </body>
+    
+    <script>
+            
+            
+            var isBusy = false,
+                tempScores
+            
+            var setScores = function(scores) {
+                
+                var oldscores = document.getElementById('oldscores');
+                var scoreboard = document.getElementById('scoreboard');
+                if (JSON.stringify(scores) == tempScores) return;
+                if (oldscores.children.length) {
+                    for (l = 0; l < oldscores.children.length; l++) {
+                        (function(e) { 
+                            setTimeout(function() {
+                                e.className += " away";
+                                setTimeout(function() {
+                                    oldscores.removeChild(e);
+                                }, 1000);
+                            }, 150 * l)
+                        })(oldscores.childNodes[l])
+                    }
+                }
+                
+                var i = 0;
+                
+                scores.map(function(s) {
+                    
+                    var eEntry = document.createElement('article');
+                    
+                    var eNick = document.createElement('nick');
+                    var eTest = document.createElement('test');
+                    var eBytes = document.createElement('bytes');
+                    var eScore = document.createElement('score');
+                    
+                    eNick.appendChild(document.createTextNode(s.nick));
+                    eTest.appendChild(document.createTextNode(s.tests));
+                    eBytes.appendChild(document.createTextNode(s.bytes));
+                    eScore.appendChild(document.createTextNode(s.score));
+                    
+                    //eEntry.className = s[3];
+                    
+                    eEntry.appendChild(eNick); 
+                    eEntry.appendChild(eTest);
+                    eEntry.appendChild(eBytes);
+                    eEntry.appendChild(eScore);
+                    
+                    scoreboard.appendChild(eEntry);
+                    
+                    eEntry.className = "score";
+                    i++;
+                    setTimeout(function() {
+                        eEntry.className += " ready";
+                    }, i * 200)
+                    
+                });
+                
+                oldscores.id = "scoreboard";
+                scoreboard.id = "oldscores";
+                
+                tempScores = JSON.stringify(scores)
+                isBusy = false;
+                
+            }            
+
+            var getScores = function(callback) {
+                var r = new XMLHttpRequest();
+                r.open("GET", "http://kuzkuz.pl:10080/scores/10", true);
+                r.onreadystatechange = function () {
+                    if (r.readyState != 4 || r.status != 200) return;
+                    setScores(JSON.parse(r.responseText));
+                };
+                r.send();
+            }
+            
+            getScores(setScores);
+            
+            setInterval(function() {
+                if (isBusy) return;
+                getScores(setScores);
+            }, 5000)
+            
+        </script>
+</html>
