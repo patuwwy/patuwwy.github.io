@@ -13,14 +13,14 @@
         @font-face {
             font-family: 'Topaz';
             font-display: auto;
-            src: url('fonts/topaz-webfont.eot');
-            src: url('fonts/topaz.eot?#iefix') format('embedded-opentype'),
-            url('fonts/topaz.woff') format('woff'),
-            url('fonts/topaz.ttf') format('truetype');
+            src: url('fonts/topaz-webfont.eot'),
+            url('fonts/topaz.woff') format('woff');
             font-weight: normal;
             font-style: normal;
         }
+
         * {box-sizing: border-box; -moz-box-sizing: border-box; -webkit-user-select: none; }
+
         html, body { height: 100%; position:relative; padding: 0; margin: 0; }
         body { background: #000; font-family: "Topaz"; line-height: 1.4em; font-size: 20px;}
 
@@ -64,7 +64,6 @@
             color: #fff;
         }
 
-
         nav a {
             line-height: 42px;
             float: left;
@@ -78,14 +77,11 @@
         }
 
         .backg {
-            /*-moz-animation: bgColor 10s -1s infinite linear;*/
-
             -webkit-perspective: 400px;
             -moz-perspective: 400px;
             -webkit-perspective: 400px;
             -moz-perspective: 400px;
             perspective: 400px;
-
             position: fixed;
             top: 0%;
             height: 100%;
@@ -93,20 +89,12 @@
             left:0;
             margin-top: 0;
             opacity: 0.4;
-
         }
 
         @media screen and (min-width:620px) {
             .backg {
-                -webkit-animation:
-                /*bgColor 10s -1s linear infinite,*/
-                hueShift 120s -1s linear infinite;
+                -webkit-animation: hueShift 120s -1s linear infinite;
             }
-        }
-        @media screen and (max-width:479px) {
-            .backg { display: none }
-            body {background: #52312F;}
-
         }
 
         .backg li {
@@ -376,7 +364,7 @@
                     box-shadow: 0 0 10px 1px #000;
                 }
 
-                #splash { height: 100vh; display: flex; justify-items: end; align-items: center; flex-direction: column-reverse; padding-bottom: 30%}
+                #splash { height: 100vh; display: flex; justify-items: end; align-items: center; flex-direction: column-reverse; padding: 0 0 30vh}
 
             </style>
 
@@ -399,11 +387,9 @@
                     "image": "https://lh3.googleusercontent.com/-uGNcXWQ5ynY/U02mk60usMI/AAAAAAAADaI/bs9OzWY50h4/s630-fcrop64=1,0f5d255ef743a7fc/10248831_10152034745307409_1141084916_n.jpg"
                 }
             </script>
-
         </head>
         <body>
             <div id="all">
-
                 <ul class="backg">
                     <li class="l1"></li>
                     <li class="l2"></li>
@@ -422,7 +408,6 @@
                     <li class="l15"></li>
                     <li class="l16"></li>
                 </ul>
-
                 <div class="content">
                     <nav>
                         <ul>
@@ -796,7 +781,6 @@
             </div>
             <script>
                 (function() {
-
                     function init() {
                         setTimeout(layout, 50);
                         setTimeout(tags, 500);
@@ -812,7 +796,6 @@
                     }
 
                     function layout() {
-
                         [].slice.call(document.querySelectorAll('noscript')).map(function(elem) {
                             img = elem.childNodes;
                             elem.outerHTML = elem.innerText || elem.innerHTML;
@@ -840,7 +823,6 @@
                         }
 
                         init();
-
                     }());
                 </script>
             </body>
