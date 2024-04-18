@@ -1,0 +1,719 @@
+
+<html>
+	<head>
+		<title>3dRaport</title>
+		<META http-equiv=Content-Type content="text/html; charset=iso-8859-2">
+		<link href='http://fonts.googleapis.com/css?family=Press+Start+2P' rel='stylesheet' type='text/css'>
+		<style>
+			* {box-sizing: border-box; -webkit-perspective: 300; -webkit-transform-origin: 50%; font-weight: normal !important}
+			body {background: #aaa; overflow: hidden;font-family: "Press Start 2P"}
+			body,canvas:not(#scanv), html, .vignette, #overW, #overWin {padding:0; margin: 0; height: 100%; width: 100%; }
+			canvas { position:absolute; -webkit-animation: in 2s ease-out forwards; }
+			#scanv {display: none}
+			.loader {opacity: 0.5; -webkit-transition: all 2s ease; background: url('ajax_loader.gif') 50% 50% no-repeat transparent; width: 100%; height: 100%; position: absolute; z-index: 4 }
+			.loader.hide {opacity: 0; }
+
+			a {color: #7396FF;}
+			a:hover {color: #7396FF}
+
+			h1 { font-size: 1.6vw; margin: 0 auto; padding: 0; line-height: 1.15em}
+
+			#status {display:none; z-index: 20; position:absolute; bottom: 0; left: 0; padding: 4px; font-size: 10px; color: #fff; background: rgba(0,0,0,0.8)}
+
+			.blur.in {-webkit-filter: blur(0); opacity: 1}
+			.blur {-webkit-filter: blur(10px); opacity: 0 }
+
+			.noise {background: url('noise.png') 0 0 repeat transparent; opacity: 0.1; width: 100%; height: 100%; position: absolute; z-index:5; }
+
+			@-webkit-keyframes in {
+				0% 		{ opacity:0; }
+				100%	{ opacity:1; }
+			}
+
+			#overW {position: absolute; top: 0; left: 0; z-index: 102;}
+			#overWin {position:relative; }
+
+			#capsW { opacity:0 ; -webkit-transition: -webkit-filter 1s ease,
+				-webkit-transform 1s ease; position: absolute; color: #fff;  max-width: 40%; font-size: 1vw; line-height: 1.3em; text-shadow: 4px 4px 10px #000; -webkit-transform: translateZ(0) translateX(-64px); }
+			#capsW.on {opacity: 1; -webkit-transform: translateZ(0) translateX(0)}
+			
+			.vignette {-webkit-transform: translateZ(0); position: absolute; background: url('vignette.png') 50% 50% no-repeat transparent; background-size: cover; opacity: 0.4; z-index: 100}
+		</style>
+		<script src="three.js"></script>
+	</head>
+	<body>
+
+		<canvas id="scanv"></canvas>
+		<div class="vignette"></div>
+		<div class="loader"></div>
+		<div class="noise"></div>
+		<div id="status">Audio connection lost...</div>
+		<div id="overW">
+		<div id="overWin">
+			<div id="capsW"></div>
+		</div>
+		</div>
+		<script>
+
+            var s = {
+				COL_SHOW: 64,
+				CLOUDS_COUNT: 64,
+				totalShift: 1,
+				sourceCanv: document.getElementById('scanv'),
+				sourceCTX: null,
+				rocks: [],
+                music: null,
+				audioPosition: 0,
+				context: null,
+				volume: 40,
+				volumeArray: [],
+				sourceMap: {
+					img: new Image(),
+					w: 0,
+					h: 0,
+					data: null
+				},
+				scene: null,
+				camera: null,
+				renderer: null,
+				statusNode: document.getElementById('status'),
+				spotlight2: null,
+				spotlight3: null,
+				ambL: {},
+				geom: null,
+				planes: [],
+				preInit: function() {
+                    s.loadMusic('klaxton.mp3', function() {
+						s.loadImages(s.init);
+					});
+                },
+				ck: 0,
+				loadImages: function(callback) {
+					s.sourceMap.img.onload = function() {
+
+						s.sourceCTX = s.sourceCanv.getContext('2d');
+						s.sourceCanv.width = s.sourceMap.w = s.sourceMap.img.width;
+						s.sourceCanv.height = s.sourceMap.h = s.sourceMap.img.height;
+
+						s.sourceCTX.drawImage(s.sourceMap.img, 0,0 );
+						s.sourceMap.data = s.sourceCTX.getImageData(0,0, s.sourceMap.w, s.sourceMap.h)
+						callback();
+					}
+					s.sourceMap.img.src = 'sourcemap1.png';
+				},
+                loadMusic: function loadMusic(url, callback) {
+                    var request = new XMLHttpRequest();
+                    request.open('GET', url, true);
+                    request.responseType = 'arraybuffer';
+
+					window.AudioContext = window.AudioContext||window.webkitAudioContext;
+                    s.context = new AudioContext();
+
+                    request.onload = function() {
+                        s.context.decodeAudioData(request.response, function(buffer) {
+                            s.music = buffer;
+							s.playMusic(callback);
+                        }, function(e) {console.log(e)});
+                    }
+                    request.send();
+                },
+				playMusic: function(callback) {
+					var source = s.context.createBufferSource();
+					source.buffer = s.music;
+					source.connect(s.context.destination);
+
+					var splitter = s.context.createChannelSplitter();
+
+                    source.connect(splitter);
+
+                    s.analyser = s.context.createAnalyser();
+                    s.analyser.smoothingTimeConstant = 0.3;
+                    s.analyser.fftSize = 1024;
+
+                    splitter.connect(s.analyser,0,0);
+                    //splitter.connect(analyser2,1,0);
+
+					var gainNode = s.context.createGain();
+					source.connect(gainNode);
+					gainNode.connect(s.context.destination);
+
+					gainNode.gain.value = 0.4;
+
+					s.audioProcess = s.context.createScriptProcessor(2048, 1, 2);
+					s.audioProcess.connect(s.context.destination);
+
+					s.analyser.connect(s.audioProcess);
+
+					function getAverageVolume(array) {
+						var i = values = 0, average, length = array.length;
+
+						for (i = 0; i < length; i++) {
+							values += array[i];
+						}
+
+						average = values / length;
+						return {average: average, array: array};
+					}
+
+					s.audioProcess.onaudioprocess = function() {
+						var array =  new Uint8Array(s.analyser.frequencyBinCount);
+						s.analyser.getByteFrequencyData(array);
+						var vol = getAverageVolume(array)
+
+						s.volume = vol.average;
+						s.volumeArray = vol.array;
+						s.audioPosition = s.audioProcess.context.currentTime;
+					}
+
+					source.addEventListener('ended', function() {
+						source.start(0);
+					});
+					source.start(0);
+
+					callback();
+				},
+
+                init: function() {
+					var lastVol = Math.random() * 100,
+						x = y = pos = c = 0,
+						render = null;
+
+					setTimeout(function() {
+						setInterval(function() {
+							if (s.volume == lastVol) {
+								s.statusNode.style.display = 'block';
+								s.volume = 40;
+							} else {
+								s.statusNode.style.display = 'none';
+							}
+							lastVol = s.volume;
+						}, 1000)
+					}, 500)
+
+
+                    s.renderer = new THREE.WebGLRenderer({ antialias: false});
+                    s.renderer.setSize(window.innerWidth, window.innerHeight);
+
+                    document.body.appendChild(s.renderer.domElement);
+
+                    s.scene = new THREE.Scene();
+					s.camera = new THREE.PerspectiveCamera(110, window.innerWidth / window.innerHeight, 1, 5000);
+
+                    s.scene.add(new THREE.Mesh(
+						new THREE.CubeGeometry( 8000, 4000, 3000 ),
+						new THREE.MeshLambertMaterial({ color: 0x220033, side: THREE.BackSide })
+					));
+
+                    s.scene.fog = new THREE.FogExp2( 0x400040, 0.0005 );
+
+                    s.camera.position.z = 220;
+                    s.camera.position.y = -90;
+                    s.camera.position.x = -20;
+
+					s.camera.lookAt({ x: 100, y: 0, z: 0 });
+					s.camera.lAt = { x: 100, y: 0, z: 0 };
+
+					s.scene.add(s.camera);
+
+					s.geom = new THREE.CubeGeometry(10, 10, 10);
+
+					for (y = 0; y < s.sourceMap.h; y++) {
+						s.rocks[y] = [];
+						for (x = 0; x < s.COL_SHOW; x++) {
+
+							pos = y * s.sourceMap.w * 4 + x * 4;
+							s.rocks[y][x] = new THREE.Mesh(
+								s.geom,
+								new THREE.MeshPhongMaterial(
+									{ 	color:
+											(s.sourceMap.data.data[pos] << 16) +
+											(s.sourceMap.data.data[pos + 1] << 8) +
+											s.sourceMap.data.data[pos + 2],
+										opacity: 1,
+										transparent: true
+									}
+								)
+							);
+
+							s.rocks[y][x].position = {
+								x: 	x * 11,
+								y: 	- y * 11,
+								z: 	s.sourceMap.data.data[pos] / 8 +
+									s.sourceMap.data.data[pos + 1] / 8 +
+									s.sourceMap.data.data[pos + 2] / 8
+							};
+							s.rocks[y][x].dz = s.sourceMap.data.data[pos] / 8 + s.sourceMap.data.data[pos + 1] / 8+ s.sourceMap.data.data[pos +2] / 8;
+							s.rocks[y][x].k = 0;
+							s.rocks[y][x].s = Math.random() + 1;
+							s.rocks[y][x].dir = Math.round(Math.random());
+							if (!s.sourceMap.data.data[pos + 3]) {
+								s.rocks[y][x].scale = {
+									x: 0.0,
+									y: 0.0,
+									z: 0.0
+								};
+							};
+							s.scene.add(s.rocks[y][x]);
+
+						}
+
+					}
+
+					s.ambL = new THREE.AmbientLight(0x000020);
+					s.scene.add(s.ambL);
+
+					s.spotlight3 = new THREE.SpotLight(0x555555);
+					s.spotlight3.position.set(250,50, 300);
+
+					s.spotlight2 = new THREE.SpotLight(0xfffffff);
+					s.spotlight2.position.set(0,0, -240);
+
+					s.spotlight3.target.position.set(70, 0, 100);
+					s.scene.add(s.spotlight2);
+					s.scene.add(s.spotlight3);
+
+					s.clouds.init();
+
+					s.particles.init();
+					s.lights.init();
+					
+					setInterval(s.events, 100);
+					
+					s.render();
+
+					document.querySelectorAll('.loader')[0].className = "loader hide";
+
+                },
+
+				clouds: {
+					init: function() {
+						var cloudTexture = THREE.ImageUtils.loadTexture('cloud3.png');
+						for (c = 0; c < s.CLOUDS_COUNT; c++) {
+						s.planes.push(
+							new THREE.Mesh(
+								new THREE.PlaneGeometry(512,192),
+									new THREE.MeshBasicMaterial({
+										map: cloudTexture,
+										transparent: true,
+										opacity: .5, color: 0xff00ff,
+										depthWrite: false,
+										blending: THREE.AdditiveBlending
+									})
+							)
+						);
+
+						s.planes[c].position.x = Math.random() * 6000 - 3000;
+						s.planes[c].position.z = -Math.random() * 1024 - 50;
+						s.planes[c].position.y = Math.random() * 1014 - 500;
+						s.planes[c].rotation.z = Math.random();
+						s.planes[c].scale.x = s.planes[c].scale.y = 4;
+						
+						s.scene.add(s.planes[c]);
+						};
+					}
+				},
+
+				particles: {
+					PARTICLE_COUNT: 2 << 9,
+					particles: null,
+					init: function() {
+
+						var p = 0,
+							pMaterial = new THREE.ParticleBasicMaterial({
+								color: 0xffffff,
+								size: 8,
+								map: THREE.ImageUtils.loadTexture(
+								  "particle2.png"
+								),
+								blending: THREE.AdditiveBlending,
+								transparent: true
+							});
+
+						s.particles.particles = new THREE.Geometry();
+
+						for (p; p < s.particles.PARTICLE_COUNT; p++) {
+							s.particles.particles.vertices.push(
+								new THREE.Vector3(
+									Math.random() * 2400,
+									Math.random() * 2400 - 1200,
+									Math.random() * 2400 - 1200
+								)
+							);
+						};
+
+						s.particles.particleSystem =
+							new THREE.ParticleSystem(
+								s.particles.particles,
+								pMaterial
+							);
+
+						s.particles.particleSystem.sortParticles = true;
+						s.scene.add(s.particles.particleSystem);
+
+					},
+
+					move: function() {
+						var p = 0;
+						for (p; p < s.particles.PARTICLE_COUNT; p++) {
+							s.particles.particles.vertices[p].x -= 8;
+							if (s.particles.particles.vertices[p].x < -1200) {
+								s.particles.particles.vertices[p].x = 1200;
+							};
+						};
+						s.particles.particleSystem.geometry.__dirtyVertices = true;
+					}
+
+				},
+
+				lights: {
+					LIGHTS_COUNT: 24,
+					lights: [],
+					k: 0,
+					gk: 0,
+					init: function() {
+						var k = p = pX = pY = pZ = 0,
+							lMaterial =
+								new THREE.ParticleBasicMaterial({
+									color: 0xffffff,
+									size: 12,
+									map: THREE.ImageUtils.loadTexture(
+									  "particle2.png"
+									),
+									blending: THREE.AdditiveBlending,
+									transparent: true
+								});
+
+						s.lights.lights = new THREE.Geometry();
+
+						for(p; p < s.lights.LIGHTS_COUNT; p++) {
+							s.lights.lights.vertices.push(new THREE.Vector3(0, 0, 0));
+						};
+
+						s.lights.lightsSystem =
+							new THREE.ParticleSystem(
+								s.lights.lights,
+								lMaterial
+							);
+
+						s.lights.lightsSystem.sortParticles = true;
+
+						s.scene.add(s.lights.lightsSystem);
+					},
+					move: function() {
+						var k = 0,
+							p = 0;
+
+						s.lights.gk += 0.05;
+
+						for(p; p < s.lights.LIGHTS_COUNT; p++) {
+							s.lights.lights.vertices[p].x = (p << 3) + 200;
+							s.lights.lights.vertices[p].y = Math.sin(k + s.lights.gk) * 112;
+							s.lights.lights.vertices[p].z = Math.cos(k + s.lights.gk) * 112 + 48;
+
+							k = k + 0.15;
+						};
+
+						s.lights.lightsSystem.geometry.__dirtyVertices = true;
+
+					}
+				},
+
+				render: function () {
+					var x = y = k = pos = d = t = 0,
+						shift = (s.volume > 115) ? 1 : 0,
+						tmp = aPOS = 0;
+
+					//stats.begin();	
+						
+					for (c = 0; c < s.CLOUDS_COUNT; c++) {
+						s.planes[c].position.x -= 20;
+						s.planes[c].material.opacity = s.planes[c].volumeAffect ? s.planes[c].material.opacity -= 0.03 : 0.5;
+						if (s.planes[c].position.x < -3000) s.planes[c].position.x = 4000
+					};
+
+					if (s.volume > 128) {
+						s.spotlight3.intensity = s.volume / 128;
+						tmp = Math.floor(Math.random() * s.CLOUDS_COUNT / 16);
+						s.planes[tmp].volumeAffect = true;
+						s.planes[tmp].material.opacity = 1
+						setTimeout(function() {
+							s.planes[tmp].volumeAffect = false;
+							s.planes[tmp].material.opacity = 0.4
+						}, 200);
+					};
+
+					for (y = 0; y < s.sourceMap.h; y++) {
+						t = false;
+
+						for (x = 0; x < s.COL_SHOW; x++) {
+
+								if (s.rocks[y][x].status == 1) {
+									s.rocks[y][x].k -= 0.03;
+									if (s.rocks[y][x].k < 0) {
+										s.rocks[y][x].status = s.rocks[y][x].k = 0;
+									}
+									s.rocks[y][x].position.z = s.rocks[y][x].dz + (s.rocks[y][x].dir ? Math.sin(s.rocks[y][x].k) : -Math.sin(s.rocks[y][x].k)) * 200;
+									s.rocks[y][x].rotation.x = s.rocks[y][x].rotation.z = s.rocks[y][x].k * s.rocks[y][x].s;
+									s.rocks[y][x].material.opacity = Math.PI / 2 - s.rocks[y][x].k;
+								}
+
+								s.rocks[y][x].position.x -= 1.5;
+
+								if (s.rocks[y][x].position.x < -90) {
+									s.rocks[y][x].position.z = (s.rocks[y][x].dz + (s.rocks[y][x].dir ? Math.sin(s.rocks[y][x].k) : -Math.sin(s.rocks[y][x].k)) * 90 * + s.rocks[y][x].s);
+									s.rocks[y][x].rotation.x = s.rocks[y][x].rotation.z = s.rocks[y][x].dir ? Math.sin(s.rocks[y][x].k) : -Math.sin(s.rocks[y][x].k) * s.rocks[y][x].s;
+									s.rocks[y][x].material.opacity = Math.PI / 2 - s.rocks[y][x].k;
+
+									s.rocks[y][x].k += 0.03;
+									
+									if (s.rocks[y][x].k > Math.PI / 2) {
+
+										s.rocks[y][x].k = Math.PI / 2;
+										s.scene.remove(s.rocks[y][x]);
+										s.rocks[y].shift();
+
+										pos = y * s.sourceMap.w * 4 + (x + s.COL_SHOW + s.totalShift) * 4;
+
+										s.rocks[y].push(
+											new THREE.Mesh(
+												s.geom,
+												new THREE.MeshLambertMaterial(
+													{ 	color:
+															(s.sourceMap.data.data[pos] << 16) +
+															(s.sourceMap.data.data[pos + 1] << 8) +
+															s.sourceMap.data.data[pos + 2],
+															opacity: 0,
+															transparent: true
+													}
+												)
+											)
+										);
+
+										s.scene.add(s.rocks[y][s.rocks[y].length - 1]);
+										s.rocks[y][s.rocks[y].length - 1].position = {
+											x: (s.COL_SHOW - 15) * 11 + 1,
+											y: - y * 11,
+											z: s.sourceMap.data.data[pos] / 8 + s.sourceMap.data.data[pos + 1] / 8 + s.sourceMap.data.data[pos +2] / 8
+										};
+										
+										s.rocks[y][s.rocks[y].length - 1].scale = {
+											x: s.sourceMap.data.data[pos + 3] / 255,
+											y: s.sourceMap.data.data[pos + 3] / 255,
+											z: s.sourceMap.data.data[pos + 3] / 255,
+										};
+
+										s.rocks[y][s.rocks[y].length - 1].dz = s.sourceMap.data.data[pos] / 8 + s.sourceMap.data.data[pos + 1] / 8 + s.sourceMap.data.data[pos +2] / 8;
+										s.rocks[y][s.rocks[y].length - 1].status = 1;
+										s.rocks[y][s.rocks[y].length - 1].dir = Math.round(Math.random());
+										s.rocks[y][s.rocks[y].length - 1].s = Math.random() + 1
+										s.rocks[y][s.rocks[y].length - 1].k = Math.PI / 2;
+										t = true;
+
+									};
+
+								};
+
+						};
+					}
+
+					if (t) {
+						s.totalShift++;
+						if (s.totalShift + s.COL_SHOW > s.sourceMap.w) s.totalShift = -s.COL_SHOW + 1;
+					}
+					
+					s.spotlight3.intensity = 0.05 * (s.volume ^ 6) + 0.4;
+
+					if (s.volume > 30) {
+						s.ck += 0.005;
+					};
+
+					s.particles.move();
+					s.lights.move();
+					
+					requestAnimationFrame(s.render);
+					s.renderer.render(s.scene, s.camera);
+					//stats.end();
+
+				},
+				
+				events: function() {
+					var aPOS = Number(s.audioPosition.toFixed(1));
+					
+					if (typeof(s.DATA[aPOS]) == "object") {
+						if (typeof(s.DATA[aPOS]).camera == "object") {
+							s.tween( s.camera, s.DATA[aPOS].camera, 60, Number(aPOS));
+						}
+						if (typeof(s.DATA[aPOS]).caption == "object") {
+							s.caps.next(aPOS);
+						};
+					};
+				},
+				
+				tween: function(a,b,t, tS) {
+					var t1 = 0,
+					c = setInterval(function() {
+						t1++;
+						for (i in b) {
+							switch (i) {
+								case "lAt":
+									s.camera.lookAt({
+										x: Math.easeInOutSine(t1, a[i].x, b[i].x - a[i].x, t),
+										y: Math.easeInOutSine(t1, a[i].y, b[i].y - a[i].y, t),
+										z: Math.easeInOutSine(t1, a[i].z, b[i].z - a[i].z, t)
+									});
+									break;
+								case "position":
+									for (v in b[i]) {
+										s.camera[i][v] = Math.easeInOutSine(t1, a[i][v], b[i][v]- a[i][v], t);
+									};
+									break;
+								case "up":
+									s.camera.up =
+										new THREE.Vector3(
+											Math.easeInOutSine(t1, a.up.x, b[i][0] - a.up.x, t),
+											Math.easeInOutSine(t1, a.up.y, b[i][1] - a.up.y, t),
+											Math.easeInOutSine(t1, a.up.z, b[i][2] - a.up.z, t)
+										);
+									break;
+							};
+						};
+						if (t1 >= t) clearTimeout(c);
+					}, 18);
+				},
+
+				caps: {
+					current: 0,
+					destDOM: document.getElementById('capsW'),
+					next: function(tS) {
+						var i = {};
+
+						s.caps.destDOM.className = "";
+						setTimeout(function() {
+							var t = '';
+							for (i in s.DATA[tS].caption.s) {
+								t = s.DATA[tS].caption.s[i];
+								s.caps.destDOM.style[i] = t + ( Number(t) ? '%' : '');
+							};
+							
+							s.caps.destDOM.style.textAlign = Number(s.DATA[tS].caption.s.right) ? 'right' : 'left'
+							s.caps.destDOM.innerHTML = s.DATA[tS].caption.t;
+							s.caps.destDOM.className = 'on';
+						}, 300);
+					}
+
+				},
+
+				DATA: {
+
+					14.0: {
+						caption: {
+								t: '<p>JS Intro</p>',
+								s: { right: 5, bottom: 'auto', left : 'auto', top : 5 }
+							}
+						},
+
+					28.6: { camera: {
+								position: {x: 200, y: -90, z: 200},	lAt: {x: -130, y: -100, z: 0}, up: [1, 1, 1]
+							},
+							caption: {
+								t: '<h1>THREE JS</h1>',
+								s: { right: 'auto', bottom: 5, left : 5, top : 'auto' }
+							}
+						},
+
+					43.1: { 	camera: {
+								position: {x: 50, y: -80, z: 140}, lAt: {x: 100, y: -40, z: 0}, up: [1, 1, 1]
+							},
+							caption: {
+								t: '<h1>43.2</h1>',
+								s: { right : 5, bottom : 5, left: 'auto', top: 'auto' }
+							}
+						},
+
+					57.7: { 	camera: {
+								position: {x: 260, y: -90, z: 170}, lAt: {x: 200, y: -40, z: 0}, up: [0, .3, .4]
+							},
+							caption: {
+								t: '<h1>57.7</h1>',
+								s: { right : 5, top : 5, left: 'auto', bottom: 'auto' }
+							}
+						},
+
+					72.1	: { 	camera: {
+								position: {x: -100, y: -60, z: 140}, lAt: {x: -100, y: 0, z: 0}, up: [.4, 1, .9]
+							},
+							caption: {
+								t: '<h1>72.1</h1>',
+								s: { left : 5, top : 5, right: 'auto', bottom: 'auto' }
+							}
+						},
+						
+					86.2: { 	camera: {
+								position: {x: 60, y: 0, z: 220}, lAt: {x: 90, y: 0, z: 0}, up: [.4, 0.1, .9]
+							}
+						},
+						
+					109.1: { 	camera: {
+								position: {x: 280, y: -30, z: 220}, lAt: {x: 100, y: -180, z: 0}, up: [0, 1, 0.5]
+							},
+							caption: {
+								t: '<h1>109.1</h1>',
+								s: { left: 5, bottom : 5, right: 'auto', top: 'auto' }
+							}
+						},
+
+					115.1: { 	camera: {
+								position: {x: -100, y: -40, z: 220}, lAt: {x: 60, y: -100, z: 0}, up: [0, 1, .5]
+							},
+							caption: {
+								t: '<ul>' +
+									'<li>115.1</li></ul>',
+								s: { right : 5, bottom : 5, left: 'auto', top: 'auto' }
+							}
+						},
+
+					129.7: { 	camera: {
+								position: {x: 150, y: -44, z: 50 }, lAt: {x: 400, y: 0, z: 0}, up: [0, 1, 0.7]
+							},
+							caption: {
+								t: '<h1>Thanks for watching!</h1><p>CODE: Patryk \'Patu\' F<br/>MUSIC: <a href="http://miumusic.bandcamp.com/track/klaxton-ss09-64k target="_blank">Kaktusen(PlayPsyCo)</a><br/></p>',
+								s: { right: 5, bottom: 'auto', left : 'auto', top : 5 }
+							}
+						}
+
+
+
+				}
+
+			};
+
+			Math.easeInOutSine = function (t, b, c, d) {
+				return -c / 2 * (Math.cos(Math.PI * t / d) - 1) + b;
+			};
+
+            window.addEventListener('load', function() {
+				s.preInit();
+            }, false);
+
+			/*
+				FIRST:
+					This release is not optimised and has duplicated fragments of code
+
+				LAST:
+					I hope You enjoyed watching this
+
+			*/
+
+		</script>
+		<script>
+		  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+		  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+		  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+		  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+		  ga('create', 'UA-19369352-19', 'auto');
+		  ga('send', 'pageview');
+
+		</script>
+	</body>
+</html>
